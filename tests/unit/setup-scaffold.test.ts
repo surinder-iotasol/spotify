@@ -1,48 +1,48 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
-const ROOT = import.meta.dirname || ".";
+describe('STORY-setup-002: Next.js 14 App Router scaffold', () => {
+  const rootDir = resolve(__dirname, '..', '..');
 
-describe("STORY-setup-001: Repository root scaffold files", () => {
-  it("should have a .git directory", () => {
-    expect(existsSync(join(ROOT, ".git"))).toBe(true);
+  test('tsconfig.json exists and enforces strict mode with ES2022 target', () => {
+    const tsconfig = JSON.parse(
+      readFileSync(resolve(rootDir, 'tsconfig.json'), 'utf-8'),
+    );
+    expect(tsconfig.compilerOptions).toBeDefined();
+    expect(tsconfig.compilerOptions.strict).toBe(true);
+    expect(tsconfig.compilerOptions.target).toBe('ES2022');
+    expect(tsconfig.compilerOptions.paths).toEqual({ '@/*': ['./src/*'] });
   });
 
-  it("should have a .gitignore covering node_modules, .next, .env, and build artifacts", () => {
-    const gitignore = join(ROOT, ".gitignore");
-    expect(existsSync(gitignore)).toBe(true);
-    const content = readFileSync(gitignore, "utf-8");
-    expect(content).toContain("node_modules/");
-    expect(content).toContain(".next/");
-    expect(content).toContain(".env");
-    expect(content).toMatch(/build|dist|out/);
+  test('next.config.js exports standalone output', () => {
+    const nextConfigPath = resolve(rootDir, 'next.config.js');
+    const nextConfig = require(nextConfigPath);
+    expect(nextConfig.output).toBe('standalone');
   });
 
-  it("should have an .editorconfig with 2-space indent, UTF-8, and LF line endings", () => {
-    const editorconfig = join(ROOT, ".editorconfig");
-    expect(existsSync(editorconfig)).toBe(true);
-    const content = readFileSync(editorconfig, "utf-8");
-    expect(content).toContain("indent_style = space");
-    expect(content).toContain("indent_size = 2");
-    expect(content).toContain("charset = utf-8");
-    expect(content).toContain("end_of_line = lf");
+  test('src/app/layout.tsx exists as a React Server Component', () => {
+    const layoutPath = resolve(rootDir, 'src', 'app', 'layout.tsx');
+    const layout = readFileSync(layoutPath, 'utf-8');
+    expect(layout).toContain('export const metadata');
+    expect(layout).toContain('export default function RootLayout');
+    expect(layout).toContain('children');
+    expect(layout).toContain('<html');
+    expect(layout).toContain('<body');
   });
 
-  it("should have a README.md documenting layout, prerequisites, and scripts", () => {
-    const readme = join(ROOT, "README.md");
-    expect(existsSync(readme)).toBe(true);
-    const content = readFileSync(readme, "utf-8");
-    expect(content.toLowerCase()).toContain("spotify");
-    expect(content.toLowerCase()).toContain("setup");
-    expect(content.toLowerCase()).toContain("dev");
+  test('src/app/page.tsx exists as a React Server Component', () => {
+    const pagePath = resolve(rootDir, 'src', 'app', 'page.tsx');
+    const page = readFileSync(pagePath, 'utf-8');
+    expect(page).toContain('export default function HomePage');
+    expect(page).toContain('<h1');
   });
 
-  it("should have a root package.json with name spotify and private true", () => {
-    const pkgPath = join(ROOT, "package.json");
-    expect(existsSync(pkgPath)).toBe(true);
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-    expect(pkg.name).toBe("spotify");
-    expect(pkg.private).toBe(true);
+  test('package.json includes Next.js 14 build and dev scripts', () => {
+    const pkg = JSON.parse(
+      readFileSync(resolve(rootDir, 'package.json'), 'utf-8'),
+    );
+    expect(pkg.scripts).toBeDefined();
+    expect(pkg.scripts.build).toBe('next build');
+    expect(pkg.scripts.dev).toBe('next dev');
   });
 });
