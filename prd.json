@@ -13,10 +13,10 @@
         "Root `package.json` initializes project name as `spotify` with private package status."
       ],
       "priority": 0,
-      "passes": false,
+      "passes": true,
       "dependsOn": [],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "haiku"
     },
     {
@@ -36,7 +36,7 @@
         "STORY-setup-001"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "haiku"
     },
     {
@@ -56,7 +56,7 @@
         "STORY-setup-002"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -156,7 +156,7 @@
         "STORY-setup-007"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -196,7 +196,7 @@
         "STORY-setup-009"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -475,7 +475,7 @@
         "STORY-security-001"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -652,7 +652,7 @@
         "STORY-security-005"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -804,7 +804,7 @@
         "STORY-profile-004"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -958,7 +958,7 @@
         "STORY-track-003"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -1050,7 +1050,7 @@
         "STORY-storage-001"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -1252,7 +1252,7 @@
         "STORY-player-003"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "haiku"
     },
     {
@@ -1298,7 +1298,7 @@
         "STORY-player-003"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "haiku"
     },
     {
@@ -1519,7 +1519,7 @@
         "STORY-playlist-002"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -1602,7 +1602,7 @@
         "STORY-setup-004"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -2364,7 +2364,7 @@
         "STORY-setup-008"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -2405,7 +2405,7 @@
         "STORY-deploy-002"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -2424,7 +2424,7 @@
         "STORY-deploy-001"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
@@ -2444,7 +2444,7 @@
         "STORY-deploy-002"
       ],
       "notes": "",
-      "effort": "low",
+      "effort": "small",
       "model": "deepseek"
     },
     {
