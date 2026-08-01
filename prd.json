@@ -191,7 +191,7 @@
         "Manual execution of CI workflow steps locally succeeds cleanly."
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-009"
       ],
