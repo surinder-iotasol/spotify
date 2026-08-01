@@ -39,10 +39,11 @@ describe("validateBody", () => {
 
     const body = (await readResponseBody(result.response!)) as Record<string, unknown>;
     expect(body.success).toBe(false);
-    expect(body.error.code).toBe("VALIDATION_FAILED");
-    expect(body.error.details).toBeDefined();
-    expect(Array.isArray(body.error.details)).toBe(true);
-    expect((body.error.details as unknown[]).length).toBeGreaterThan(0);
+    const apiError = body.error as { code: string; details?: unknown[] };
+    expect(apiError.code).toBe("VALIDATION_FAILED");
+    expect(apiError.details).toBeDefined();
+    expect(Array.isArray(apiError.details)).toBe(true);
+    expect((apiError.details as unknown[]).length).toBeGreaterThan(0);
   });
 
   it("returns ok: false for wrong type", async () => {
@@ -121,9 +122,10 @@ describe("validateBody", () => {
     expect(result.response!.status).toBe(422);
     const body = (await readResponseBody(result.response!)) as Record<string, unknown>;
     expect(body.success).toBe(false);
-    expect(body.error.details).toBeDefined();
-    expect(Array.isArray(body.error.details)).toBe(true);
-    expect((body.error.details as unknown[]).length).toBe(2);
+    const err2 = body.error as { details?: unknown[] };
+    expect(err2.details).toBeDefined();
+    expect(Array.isArray(err2.details)).toBe(true);
+    expect((err2.details as unknown[]).length).toBe(2);
   });
 
   it("accepts optional fields when omitted", () => {

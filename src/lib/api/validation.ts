@@ -39,7 +39,7 @@ export function zodErrorToDetails(error: ZodError): ValidationErrorDetail[] {
 
     return {
       code,
-      path: err.path,
+      path: err.path.map((p) => String(p)),
       message: err.message,
     };
   });

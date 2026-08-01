@@ -191,7 +191,7 @@ describe("sanitizeErrorForLogging", () => {
       { message: "err2", apiKey: "key1" },
     ];
 
-    const result = sanitizeErrorForLogging(error) as { message: string; password?: string; apiKey?: string }[];
+    const result = sanitizeErrorForLogging(error) as unknown as { message: string; password?: string; apiKey?: string }[];
     expect(result[0].message).toBe("err1");
     expect(result[0].password).toBe("[REDACTED]");
     expect(result[1].message).toBe("err2");
