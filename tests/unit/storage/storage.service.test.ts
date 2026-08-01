@@ -13,7 +13,9 @@ import { S3StorageService, StorageConfig, PresignerFn } from '@/lib/storage/stor
  * Commands expose their parameters via .input.
  */
 function getInput(cmd: unknown): Record<string, unknown> {
-  return (cmd as Record<string, unknown>)?.input ?? (cmd as Record<string, unknown>);
+  const c = cmd as Record<string, unknown> | null;
+  if (!c) return {};
+  return ((c.input ?? c) as Record<string, unknown>) || {};
 }
 
 describe('S3StorageService', () => {
@@ -29,7 +31,7 @@ describe('S3StorageService', () => {
 
   // ── Helpers ───────────────────────────────────────────────────
 
-  function createMockClient(sendResult: Record<string, any> = { ETag: 'test-etag' }) {
+  function createMockClient(sendResult: Record<string, unknown> = { ETag: 'test-etag' }) {
     const sendFn = vi.fn().mockResolvedValue(sendResult);
     return { send: sendFn, sendFn };
   }
@@ -62,10 +64,10 @@ describe('S3StorageService', () => {
       expect(sendFn).toHaveBeenCalledTimes(1);
       const command = sendFn.mock.calls[0][0];
       const input = getInput(command);
-      expect(input.Bucket).toBe(MOCK_BUCKET);
-      expect(input.Key).toBe(key);
-      expect(input.Body).toBe(body);
-      expect(input.ContentType).toBe(contentType);
+      expect(input).toHaveProperty('Bucket', MOCK_BUCKET);
+      expect(input).toHaveProperty('Key', key);
+      expect(input).toHaveProperty('Body', body);
+      expect(input).toHaveProperty('ContentType', contentType);
       expect(result).toEqual({ eTag: 'test-etag' });
     });
 
@@ -101,8 +103,8 @@ describe('S3StorageService', () => {
       expect(sendFn).toHaveBeenCalledTimes(1);
       const command = sendFn.mock.calls[0][0];
       const input = getInput(command);
-      expect(input.Bucket).toBe(MOCK_BUCKET);
-      expect(input.Key).toBe('uploads/audio.mp3');
+      expect(input).toHaveProperty('Bucket', MOCK_BUCKET);
+      expect(input).toHaveProperty('Key', 'uploads/audio.mp3');
     });
 
     it('throws when S3 deletion fails', async () => {
@@ -133,8 +135,8 @@ describe('S3StorageService', () => {
       const callArgs = presignerFn.mock.calls[0];
       expect(callArgs[2]).toEqual({ expiresIn: 3600 });
       const input = getInput(capturedCmd);
-      expect(input.Bucket).toBe(MOCK_BUCKET);
-      expect(input.Key).toBe('uploads/audio.mp3');
+      expect(input).toHaveProperty('Bucket', MOCK_BUCKET);
+      expect(input).toHaveProperty('Key', 'uploads/audio.mp3');
     });
 
     it('calls presignerFn with GET command and 900s TTL', async () => {
@@ -152,8 +154,8 @@ describe('S3StorageService', () => {
       const callArgs = presignerFn.mock.calls[0];
       expect(callArgs[2].expiresIn).toBe(900);
       const input = getInput(capturedCmd);
-      expect(input.Bucket).toBe(MOCK_BUCKET);
-      expect(input.Key).toBe('uploads/audio.mp3');
+      expect(input).toHaveProperty('Bucket', MOCK_BUCKET);
+      expect(input).toHaveProperty('Key', 'uploads/audio.mp3');
       expect(input.ContentType).toBeUndefined();
     });
 
@@ -202,7 +204,7 @@ describe('S3StorageService', () => {
       await service.generateSignedUrl('audio.mp3', 'PUT', 'audio/mpeg');
 
       const input = getInput(capturedCmd);
-      expect(input.ContentType).toBe('audio/mpeg');
+      expect(input).toHaveProperty('ContentType', 'audio/mpeg');
     });
 
     it('omits ContentType for GET requests', async () => {

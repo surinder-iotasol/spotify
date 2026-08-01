@@ -66,7 +66,7 @@ export class S3StorageService implements StorageService {
 
   constructor(config: StorageConfig, client?: S3ClientLike) {
     this.bucket = config.bucket;
-    this.client = client ?? createS3Client(config);
+    this.client = client ?? createS3Client(config) as S3ClientLike;
     this.presignerFn = generatePresignedUrl;
   }
 
@@ -82,7 +82,8 @@ export class S3StorageService implements StorageService {
     });
 
     const response = await this.client.send(command);
-    return { eTag: (response as Record<string, unknown>)?.ETag ?? '' };
+    const etag = (response as Record<string, unknown>)?.ETag;
+    return { eTag: (typeof etag === 'string') ? etag : '' };
   }
 
   /**

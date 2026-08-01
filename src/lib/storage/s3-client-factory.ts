@@ -39,5 +39,5 @@ export async function generatePresignedUrl(
   command: unknown,
   options: { expiresIn: number },
 ): Promise<string> {
-  return _getSignedUrl(client as any, command, options);
+  return _getSignedUrl(client as any, command as any, options);
 }
