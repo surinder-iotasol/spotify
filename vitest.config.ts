@@ -1,15 +1,17 @@
-import path from 'path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
-    environmentMatchGlobs: [
-      ['src/**', 'jsdom'],
-    ],
-    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+    environment: 'jsdom',
+    environmentOptions: {
+      jsdom: {
+        url: 'http://localhost/',
+      },
+    },
+    include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.ts'],
     exclude: ['node_modules', '.next', 'e2e'],
+    setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
@@ -25,7 +27,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': __dirname + '/src',
     },
   },
 });
