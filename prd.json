@@ -494,7 +494,7 @@
         "Integration test verifies successful login cookie issuance, 401 error envelope on invalid credentials, and 429 rate limit triggering after 5 failed attempts."
       ],
       "priority": 20,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-security-001",
         "STORY-security-002"
