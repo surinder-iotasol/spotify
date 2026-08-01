@@ -348,7 +348,7 @@
       ],
       "priority": 14.3,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-security-005b"
       ],
