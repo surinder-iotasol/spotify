@@ -232,7 +232,7 @@
         "Unit tests in tests/unit/security/session.test.ts cover token creation, claim validation, signature tampering, expiration checks, and cookie header formatting."
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-007"
       ],
