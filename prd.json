@@ -449,7 +449,7 @@
         "Playwright E2E spec in e2e/tests/upload-flow.spec.ts verifies selecting an audio file, observing progress, and completing direct upload."
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-storage-002",
         "STORY-setup-003"
