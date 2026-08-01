@@ -383,7 +383,7 @@
         "Integration tests against mock S3 storage verify presigned upload token generation and metadata retrieval."
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-005"
       ],
