@@ -51,7 +51,7 @@
         "Unit test verifies helper utility `cn()` correctly merges Tailwind CSS classes."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-002"
       ],

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "jetro": {
+      "type": "stdio",
+      "command": "/home/surindersingh/.jetro/runtime/node-linux-x64",
+      "args": [
+        "/home/surindersingh/.jetro/mcp-server/index.js"
+      ],
+      "env": {
+        "JET_WORKSPACE": "/home/surindersingh/Documents/ralph-studio",
+        "JET_API_URL": "https://api.jetro.ai",
+        "PATH": "/home/surindersingh/.jetro/runtime:/home/surindersingh/.local/bin:/home/surindersingh/.opencode/bin:/home/surindersingh/Documents/taxtalk:/home/surindersingh/.bun/bin:/home/surindersingh/.nvm/versions/node/v22.12.0/bin:/home/surindersingh/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/surindersingh/.dotnet/tools:/home/surindersingh/.dotnet/tools"
+      }
+    }
+  }
+}
