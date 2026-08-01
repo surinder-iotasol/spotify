@@ -27,6 +27,5 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
-  reportDir: 'e2e-reports',
   reporter: [['html', { outputFolder: 'e2e-reports' }]],
 });

@@ -165,7 +165,8 @@ export function sanitizeDetails(
   details: ValidationErrorDetail[],
 ): ValidationErrorDetail[] {
   return details.map((detail) => {
-    const cleanedPath = detail.path.filter(
+    const path = Array.isArray(detail.path) ? detail.path : [];
+    const cleanedPath = path.filter(
       (segment) => !SENSITIVE_FIELDS.includes(segment),
     );
 
