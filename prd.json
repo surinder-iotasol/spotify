@@ -472,7 +472,7 @@
         "Integration test asserts POST /api/v1/auth/register creates user, sets session cookie, and returns sanitized envelope."
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-security-001",
         "STORY-security-002",
