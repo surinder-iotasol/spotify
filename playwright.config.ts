@@ -18,7 +18,7 @@ export default defineConfig({
     },
     {
       name: 'Mobile',
-      use: { ...devices['iPhone SE'], browserName: 'chromium' },
+      use: { ...devices['iPhone 6'], browserName: 'chromium' },
     },
   ],
   webServer: {
