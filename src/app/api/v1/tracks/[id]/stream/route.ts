@@ -1,12 +1,13 @@
 /**
  * STORY-storage-003: GET /api/v1/tracks/[id]/stream
  *
- * Generates a presigned GET URL for track playback streaming.
+ * Returns a presigned GET URL for track playback streaming.
  *
  * - Returns a presigned URL with 15-minute (900s) TTL per DEC-008.
  * - Public streaming for unauthenticated guests per DEC-005.
  * - Sets Accept-Ranges: bytes and Cache-Control: private, max-age=900 headers.
- * - Supports byte-range partial content (HTTP 206) via Content-Range.
+ * - HTTP byte-range requests (206 Partial Content) are handled natively by
+ *   S3/R2 when the client uses the presigned URL with Range headers.
  *
  * Response payload (200):
  *   { streamUrl, expiresIn: 900, trackId, storageKey }
@@ -14,7 +15,6 @@
 import { NextRequest } from 'next/server';
 import { StreamService } from '@/lib/storage/stream.service';
 import { apiSuccessResponse, apiErrorResponse } from '@/lib/api/response';
-import { parseRangeHeader } from '@/lib/storage/stream.service';
 
 // ── Environment Configuration ──────────────────────────────────────
 
@@ -74,43 +74,9 @@ export async function GET(
     );
   }
 
-  // 4. Check for Range header to handle partial content (HTTP 206)
-  const rangeHeader = request.headers.get('range');
-  const parsedRange = parseRangeHeader(rangeHeader);
-
-  if (parsedRange) {
-    try {
-      // Get total file size via HEAD request
-      const metadata = await streamService.getObjectMetadata(storageKey);
-
-      // Resolve the byte range
-      const resolvedRange = streamService.resolveRange(parsedRange, metadata.size);
-
-      if (resolvedRange) {
-        // Return partial content with Content-Range header
-        const contentRange = streamService.buildContentRangeHeader(parsedRange, metadata.size);
-        const contentLength = resolvedRange.end - resolvedRange.start + 1;
-
-        const responseHeaders = new Headers({
-          'Content-Type': metadata.contentType,
-          'Accept-Ranges': 'bytes',
-          'Cache-Control': 'private, max-age=900',
-          'Content-Range': contentRange,
-          'Content-Length': String(contentLength),
-          'ETag': `"${trackId}"`,
-        });
-
-        return new Response(null, {
-          status: 206,
-          headers: responseHeaders,
-        });
-      }
-    } catch {
-      // If metadata lookup fails, fall through to returning full presigned URL
-    }
-  }
-
-  // 5. Return full presigned URL with streaming headers (HTTP 200)
+  // 4. Return full presigned URL with streaming headers (HTTP 200)
+  // Byte-range requests (HTTP 206) are handled natively by S3/R2 when the client
+  // uses the presigned URL directly with Range headers — no proxying needed.
   return new Response(
     JSON.stringify(
       apiSuccessResponse({
