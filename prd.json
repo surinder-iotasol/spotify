@@ -212,7 +212,7 @@
         "Unit tests in tests/unit/security/password.test.ts verify hashing, cost factor 12 execution time (~250ms), verification logic, and payload sanitization."
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-004"
       ],
