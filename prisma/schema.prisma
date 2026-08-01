@@ -1,0 +1,367 @@
+// ============================================================
+// Indie Music Streaming Platform — Prisma ORM v7.x Schema
+// Provider: MongoDB (Serverless / Atlas)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum UserRole {
+  LISTENER
+  ARTIST
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum TrackStatus {
+  LIVE
+  ARCHIVED
+  TAKEDOWN
+  PENDING
+}
+
+enum Genre {
+  INDIE_ROCK
+  BEDROOM_POP
+  ELECTRONIC
+  HIP_HOP
+  LO_FI
+  AMBIENT
+  R_AND_B
+  FOLK
+  OTHER
+}
+
+enum ReportReason {
+  COPYRIGHT_VIOLATION
+  INAPPROPRIATE_CONTENT
+  SPAM_OR_MISLEADING
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED_APPROVED
+  RESOLVED_REJECTED
+}
+
+enum AuditAction {
+  REPORT_APPROVED_UNPUBLISH
+  REPORT_REJECTED_DISMISS
+  USER_SUSPENDED
+  USER_BANNED
+  USER_REINSTATED
+}
+
+// ============================================================
+// 1. User
+// ============================================================
+// Stories: auth-001, auth-003, security-001, security-002,
+//          usermod-001, usermod-002, role-001, role-003
+
+model User {
+  id                      String       @id @map("_id")
+  email                   String       @unique
+  passwordHash            String       @map("password_hash")
+  displayName             String       @map("display_name")
+  roles                   UserRole[]   @default([LISTENER])
+  status                  AccountStatus @default(ACTIVE)
+  emailVerified           Boolean      @default(false) @map("email_verified")
+  emailVerifiedAt         DateTime?    @map("email_verified_at")
+  tokenInvalidatedBefore  DateTime?    @map("token_invalidated_before")
+  createdAt               DateTime     @default(now()) @map("created_at")
+  updatedAt               DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  artistProfile           ArtistProfile?
+  playlists               Playlist[]
+  likes                   Like[]
+  followsAsFollower       Follow[]     @relation("FollowFollower")
+  reportsAsReporter       Report[]
+  auditLogsAsAdmin        AuditLog[]   @relation("AuditLogAdmin")
+
+  @@map("users")
+}
+
+// ============================================================
+// 2. ArtistProfile
+// ============================================================
+// Stories: role-001, profile-001, profile-002, profile-003,
+//          profile-006, profile-007, track-003, search-001
+
+model ArtistProfile {
+  id              String    @id @map("_id")
+  userId          String    @unique @map("user_id")
+  stageName       String
+  bio             String?
+  avatarUrl       String?   @map("avatar_url")
+  headerImageUrl  String?   @map("header_image_url")
+  socialLinks     Json?     // max 5 items; { platform, url }[]
+  genreTags       Json?     // string[]
+  isVerified      Boolean   @default(false) @map("is_verified")
+  followerCount   Int       @default(0) @map("follower_count")
+  trackCount      Int       @default(0)
+  totalPlays      Int       @default(0)
+  totalLikes      Int       @default(0)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks          Track[]
+  followedBy      Follow[]  @relation("FollowArtist")
+
+  // Text search index managed via MongoDB directly (STORY-search-001)
+  // MongoDB: db.artist_profiles.createIndex({ stageName: "text", bio: "text" })
+
+  @@map("artist_profiles")
+}
+
+// ============================================================
+// 3. Track
+// ============================================================
+// Stories: track-001, track-003, track-007, track-009,
+//          search-001, recommend-001, recommend-002, listen-003
+
+model Track {
+  id                    String        @id @map("_id")
+  title                 String
+  genre                 Genre
+  description           String?
+  audioStorageKey       String        @map("audio_storage_key")
+  audioUrl              String?       @map("audio_url")
+  coverImageUrl         String?       @map("cover_image_url")
+  coverImageStorageKey  String?       @map("cover_image_storage_key")
+  artistProfileId       String        @map("artist_profile_id")
+  status                TrackStatus   @default(LIVE)
+  duration              Float         @default(0.0)
+  playCount             Int           @default(0) @map("play_count")
+  likeCount             Int           @default(0) @map("like_count")
+  isLive                Boolean       @default(true) @map("is_live")
+  isSoftHidden          Boolean       @default(false) @map("is_soft_hidden")
+  deletedAt             DateTime?     @map("deleted_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  artistProfile         ArtistProfile @relation(fields: [artistProfileId], references: [id])
+  playlistTracks        PlaylistTrack[]
+  likes                 Like[]
+  reports               Report[]
+  playLogs              PlayLog[]
+
+  // Text search index managed via MongoDB directly (STORY-search-001)
+  // MongoDB: db.tracks.createIndex({ title: "text", genre: "text" })
+
+  // Filter indexes (STORY-search-001)
+  @@index([status, createdAt])
+  @@index([status, playCount])
+
+  @@map("tracks")
+}
+
+// ============================================================
+// 4. Playlist
+// ============================================================
+// Stories: playlist-001, playlist-002, playlist-003,
+//          playlist-006, playlist-007, playlist-009,
+//          usermod-003, search-001
+
+model Playlist {
+  id                   String   @id @map("_id")
+  userId               String   @map("user_id")
+  title                String
+  description          String?
+  coverImageUrl        String?  @map("cover_image_url")
+  isPublic             Boolean  @default(false) @map("is_public")
+  trackCount           Int      @default(0)
+  totalDurationSeconds Float    @default(0.0) @map("total_duration_seconds")
+  shareUrl             String?  @map("share_url")
+  isSoftHidden         Boolean  @default(false) @map("is_soft_hidden")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner            User          @relation(fields: [userId], references: [id])
+  playlistTracks   PlaylistTrack[]
+
+  // Text search index managed via MongoDB directly (STORY-search-001)
+  // MongoDB: db.playlists.createIndex({ title: "text", description: "text" })
+
+  // Filter index (STORY-search-001)
+  @@index([isPublic, createdAt])
+
+  @@map("playlists")
+}
+
+// ============================================================
+// 5. PlaylistTrack (junction)
+// ============================================================
+// Stories: playlist-003, playlist-004
+
+model PlaylistTrack {
+  id              String  @id @map("_id")
+  playlistId      String  @map("playlist_id")
+  trackId         String  @map("track_id")
+  position        Int
+  durationSeconds Float?  @map("duration_seconds")
+
+  // Relations
+  playlist        Playlist  @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track           Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  // Compound unique: a track can appear only once in a playlist
+  @@unique([playlistId, trackId])
+  // Position must be unique within a playlist
+  @@unique([playlistId, position])
+
+  @@map("playlist_tracks")
+}
+
+// ============================================================
+// 6. Like
+// ============================================================
+// Stories: like-001, like-003
+
+model Like {
+  id          String   @id @map("_id")
+  userId      String   @map("user_id")
+  trackId     String   @map("track_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  track       Track    @relation(fields: [trackId], references: [id])
+
+  // Idempotency: one like per user per track
+  @@unique([userId, trackId])
+
+  @@map("likes")
+}
+
+// ============================================================
+// 7. Follow
+// ============================================================
+// Stories: follow-001, follow-002
+
+model Follow {
+  id                String   @id @map("_id")
+  followerId        String   @map("follower_id")
+  artistProfileId   String   @map("artist_profile_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relations
+  follower          User       @relation("FollowFollower", fields: [followerId], references: [id])
+  artist            ArtistProfile @relation("FollowArtist", fields: [artistProfileId], references: [id])
+
+  // Idempotency: one follow per user per artist
+  @@unique([followerId, artistProfileId])
+
+  @@map("follows")
+}
+
+// ============================================================
+// 8. Report
+// ============================================================
+// Stories: report-001, moderation-001, moderation-002
+
+model Report {
+  id              String          @id @map("_id")
+  trackId         String          @map("track_id")
+  reporterId      String?         @map("reporter_id")
+  reporterIp      String?         @map("reporter_ip")
+  reason          ReportReason
+  details         String?
+  status          ReportStatus    @default(PENDING)
+  resolvedAt      DateTime?       @map("resolved_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  track    Track   @relation(fields: [trackId], references: [id])
+  reporter User?   @relation(fields: [reporterId], references: [id])
+
+  @@map("reports")
+}
+
+// ============================================================
+// 9. AuditLog (immutable audit trail)
+// ============================================================
+// Stories: moderation-002, usermod-002
+
+model AuditLog {
+  id              String       @id @map("_id")
+  adminId         String       @map("admin_id")
+  action          AuditAction
+  targetEntityId  String       @map("target_entity_id")
+  targetEntityType String      @map("target_entity_type")
+  previousValue   Json?        @map("previous_value")
+  newValue        Json?        @map("new_value")
+  adminNotes      String?      @map("admin_notes")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  admin           User         @relation("AuditLogAdmin", fields: [adminId], references: [id])
+
+  @@index([targetEntityId, targetEntityType])
+  @@index([createdAt])
+
+  @@map("audit_logs")
+}
+
+// ============================================================
+// 10. PlayLog (append-only play tracking)
+// ============================================================
+// Stories: listen-001, listen-002, listen-003
+
+model PlayLog {
+  id              String   @id @map("_id")
+  trackId         String   @map("track_id")
+  artistProfileId String   @map("artist_profile_id")
+  userId          String?  @map("user_id")
+  ipAddressHash   String   @map("ip_address_hash")
+  countryCode     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  track           Track    @relation(fields: [trackId], references: [id])
+
+  @@map("play_logs")
+}
+
+// ============================================================
+// 11. PlatformMetricSnapshot (daily analytics)
+// ============================================================
+// Stories: analytics-001
+
+model PlatformMetricSnapshot {
+  snapshotDate               String  @id @map("_id")
+  totalUsers                 Int     @default(0)   @map("total_users")
+  newUsersToday              Int     @default(0)   @map("new_users_today")
+  totalArtists               Int     @default(0)   @map("total_artists")
+  newArtistsToday            Int     @default(0)   @map("new_artists_today")
+  totalTracks                Int     @default(0)   @map("total_tracks")
+  newTracksToday             Int     @default(0)   @map("new_tracks_today")
+  audioBytesTotal            BigInt  @default(0)   @map("audio_bytes_total")
+  imageBytesTotal            BigInt  @default(0)   @map("image_bytes_total")
+  pendingReportsCount        Int     @default(0)   @map("pending_reports_count")
+  resolvedReportsToday       Int     @default(0)   @map("resolved_reports_today")
+  avgReportResolutionMinutes Float   @default(0.0) @map("avg_report_resolution_minutes")
+  createdAt                  DateTime @default(now()) @map("created_at")
+
+  @@map("platform_metric_snapshots")
+}

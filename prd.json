@@ -71,7 +71,7 @@
         "Unit test instantiates PrismaClient and validates all model typings compile without TypeScript errors."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-003"
       ],
