@@ -91,7 +91,7 @@
         "Integration test validates audio upload size constraint validation helper caps files at 50MB."
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-004"
       ],
