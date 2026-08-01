@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  NODE_VERSION: "22"
+  DATABASE_URL: "mongodb://localhost:27017/indie_platform"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeScript compilation check
+        run: npx tsc --noEmit
+
+      - name: Run Vitest unit tests
+        run: npm test
+
+      - name: Build Next.js application
+        run: npm run build
+
+      - name: Run Playwright E2E tests
+        run: npm run test:e2e
+        timeout-minutes: 15
