@@ -99,7 +99,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       const response = await POST(createRequest(VALID_AUDIO_PAYLOAD));
       expect(response.status).toBe(200);
 
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; data: Record<string, unknown> };
       expect(body.success).toBe(true);
       expect(body.data).toHaveProperty('uploadUrl');
       expect(body.data.uploadUrl).toBe('https://s3.example.com/put/abc123');
@@ -120,7 +121,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; data: Record<string, unknown> };
       expect(body.success).toBe(true);
       expect(body.data.objectKey).toMatch(/\.wav$/);
     });
@@ -134,7 +136,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; data: Record<string, unknown> };
       expect(body.success).toBe(true);
     });
   });
@@ -146,7 +149,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       const response = await POST(createRequest(VALID_IMAGE_PAYLOAD));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; data: Record<string, unknown> };
       expect(body.success).toBe(true);
       expect(body.data.objectKey).toMatch(/^images\/artist-001\/img-001_[a-f0-9-]+\.webp$/);
     });
@@ -161,7 +165,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; data: Record<string, unknown> };
       expect(body.success).toBe(true);
       // All images should use .webp extension in the key
       expect(body.data.objectKey).toMatch(/\.webp$/);
@@ -177,7 +182,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; data: Record<string, unknown> };
       expect(body.success).toBe(true);
     });
   });
@@ -190,7 +196,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(422);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; error: { details?: Array<{ code: string }> } };
       expect(body.success).toBe(false);
       expect(body.error.details).toBeDefined();
       expect(Array.isArray(body.error.details)).toBe(true);
@@ -204,7 +211,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(422);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; error: { details?: Array<{ code: string }> } };
       expect(body.success).toBe(false);
       expect(body.error.details!.some((d: { code: string }) => d.code === 'AUDIO_FILE_TOO_LARGE')).toBe(true);
     });
@@ -216,7 +224,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(422);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean };
       expect(body.success).toBe(false);
     });
   });
@@ -229,7 +238,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(422);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; error: { details?: Array<{ code: string }> } };
       expect(body.success).toBe(false);
       expect(body.error.details!.some((d: { code: string }) => d.code === 'INVALID_IMAGE_MIME_TYPE')).toBe(true);
     });
@@ -241,7 +251,8 @@ describe('POST /api/v1/storage/upload-intent — Integration', () => {
       }));
 
       expect(response.status).toBe(422);
-      const body = await response.json() as Record<string, unknown>;
+      const raw = await response.json() as Record<string, unknown>;
+      const body = raw as { success: boolean; error: { details?: Array<{ code: string }> } };
       expect(body.success).toBe(false);
       expect(body.error.details!.some((d: { code: string }) => d.code === 'IMAGE_FILE_TOO_LARGE')).toBe(true);
     });
