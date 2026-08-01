@@ -47,6 +47,9 @@ jobs:
       - name: Run Vitest unit tests
         run: npm test
 
+      - name: Run Vitest unit tests with coverage thresholds
+        run: npx vitest run --coverage
+
       - name: Build Next.js application
         run: npm run build
 
