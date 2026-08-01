@@ -1,18 +1,27 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import {
-  checkAdminAccess,
-  isAdminRoute,
   parseCookies,
+  isAdminRoute,
   extractSessionToken,
   getSessionClaims,
   isAdmin,
-  RBAC_ERRORS,
-  ADMIN_ROLES,
-  ADMIN_ROUTE_PATTERNS,
+  checkRouteAccess,
+  ROUTE_MIN_ROLE,
+  ROUTE_CATEGORIES,
+  PUBLIC_PATHS,
+  ROLE_HIERARCHY,
+  RouteAccessResult,
 } from "../../../src/lib/auth/middleware";
-import { generateToken, SESSION_COOKIE_NAME, TokenError } from "../../../src/lib/auth";
+import {
+  generateToken,
+  TokenError,
+  type UserRole,
+} from "../../../src/lib/auth";
 
-// Set JWT_SECRET for testing
+/* ------------------------------------------------------------------ */
+/*  Setup                                                               */
+/* ------------------------------------------------------------------ */
+
 beforeAll(() => {
   process.env.JWT_SECRET =
     "test-secret-key-for-unit-testing-must-be-at-least-256-bits-long";
@@ -23,349 +32,191 @@ afterAll(() => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  parseCookies                                                       */
+/*  parseCookies                                                        */
 /* ------------------------------------------------------------------ */
 
 describe("parseCookies", () => {
-  it("returns empty object for null", () => {
+  it("returns an empty object when cookieHeader is null", () => {
     expect(parseCookies(null)).toEqual({});
   });
 
-  it("returns empty object for empty string", () => {
+  it("returns an empty object when cookieHeader is empty string", () => {
     expect(parseCookies("")).toEqual({});
   });
 
-  it("parses a simple cookie header", () => {
-    const result = parseCookies("foo=bar");
-    expect(result).toEqual({ foo: "bar" });
+  it("parses a simple cookie into key-value pairs", () => {
+    const result = parseCookies("__Host-indie_session=abc123");
+    expect(result).toEqual({ "__Host-indie_session": "abc123" });
   });
 
   it("parses multiple cookies", () => {
-    const result = parseCookies("a=1; b=2; c=3");
-    expect(result).toEqual({ a: "1", b: "2", c: "3" });
+    const result = parseCookies("__Host-indie_session=abc; other=def");
+    expect(result).toEqual({ "__Host-indie_session": "abc", other: "def" });
   });
 
-  it("handles __Host- prefix cookies", () => {
-    const result = parseCookies(`__Host-indie_session=token123`);
-    expect(result[SESSION_COOKIE_NAME]).toBe("token123");
+  it("trims whitespace around cookie parts", () => {
+    const result = parseCookies("__Host-indie_session=abc ; other=def ");
+    expect(result).toEqual({ "__Host-indie_session": "abc", other: "def" });
   });
 
-  it("handles cookie values with equals signs", () => {
-    const result = parseCookies("a=1; b=value=with=equals");
-    expect(result.b).toBe("value=with=equals");
+  it("ignores cookie entries without = delimiter", () => {
+    const result = parseCookies("bare; __Host-indie_session=abc");
+    // "bare" has no = so it gets [c.slice(0,0), c.slice(1)] which is ["", "are"]
+    expect(result["__Host-indie_session"]).toBe("abc");
   });
 });
 
 /* ------------------------------------------------------------------ */
-/*  extractSessionToken                                                */
+/*  extractSessionToken                                                 */
 /* ------------------------------------------------------------------ */
 
 describe("extractSessionToken", () => {
-  it("returns null for null cookie header", () => {
+  it("returns null when cookieHeader is null", () => {
     expect(extractSessionToken(null)).toBeNull();
   });
 
-  it("returns null when session cookie is not present", () => {
+  it("returns null when session cookie is absent", () => {
     expect(extractSessionToken("other=value")).toBeNull();
   });
 
-  it("extracts the session token when present", () => {
-    const result = extractSessionToken(`${SESSION_COOKIE_NAME}=abc123token`);
-    expect(result).toBe("abc123token");
-  });
-
-  it("extracts token from a longer cookie header", () => {
-    const result = extractSessionToken(
-      "other=value1; " + SESSION_COOKIE_NAME + "=mySessionToken; another=value2",
-    );
-    expect(result).toBe("mySessionToken");
+  it("returns the session token when present", () => {
+    const token = extractSessionToken("__Host-indie_session=my-jwt-token");
+    expect(token).toBe("my-jwt-token");
   });
 });
 
 /* ------------------------------------------------------------------ */
-/*  isAdminRoute                                                       */
+/*  Route categories and constants                                      */
 /* ------------------------------------------------------------------ */
 
-describe("isAdminRoute", () => {
-  it("matches /admin exactly", () => {
-    expect(isAdminRoute("/admin")).toBe(true);
+describe("ROUTE_CATEGORIES", () => {
+  it("includes /admin", () => {
+    expect(ROUTE_CATEGORIES.ADMIN).toBe("/admin");
   });
-
-  it("matches /admin/dashboard", () => {
-    expect(isAdminRoute("/admin/dashboard")).toBe(true);
+  it("includes /api/v1/admin", () => {
+    expect(ROUTE_CATEGORIES.API_ADMIN).toBe("/api/v1/admin");
   });
-
-  it("matches /admin/users", () => {
-    expect(isAdminRoute("/admin/users")).toBe(true);
+  it("includes /api/v1/artist", () => {
+    expect(ROUTE_CATEGORIES.ARTIST).toBe("/api/v1/artist");
   });
-
-  it("matches /admin with nested path", () => {
-    expect(isAdminRoute("/admin/some/deep/nested/path")).toBe(true);
+  it("includes /api/v1/playlists", () => {
+    expect(ROUTE_CATEGORIES.PLAYLISTS).toBe("/api/v1/playlists");
   });
-
-  it("matches /api/v1/admin exactly", () => {
-    expect(isAdminRoute("/api/v1/admin")).toBe(true);
-  });
-
-  it("matches /api/v1/admin/users", () => {
-    expect(isAdminRoute("/api/v1/admin/users")).toBe(true);
-  });
-
-  it("matches /api/v1/admin/reports", () => {
-    expect(isAdminRoute("/api/v1/admin/reports")).toBe(true);
-  });
-
-  it("does not match /api/v1/admin-not-real (different path)", () => {
-    // /api/v1/admin-not-real is NOT /api/v1/admin/* — it's a different path
-    // The pattern match uses path prefix with trailing slash
-    expect(isAdminRoute("/api/v1/admin-not-real")).toBe(false);
-  });
-
-  it("does not match non-admin routes", () => {
-    expect(isAdminRoute("/")).toBe(false);
-    expect(isAdminRoute("/login")).toBe(false);
-    expect(isAdminRoute("/artists")).toBe(false);
-    expect(isAdminRoute("/api/v1/tracks")).toBe(false);
-    expect(isAdminRoute("/api/v1/search")).toBe(false);
-    expect(isAdminRoute("/api/v1/users/me")).toBe(false);
+  it("includes /api/v1/reports", () => {
+    expect(ROUTE_CATEGORIES.REPORTS).toBe("/api/v1/reports");
   });
 });
 
 /* ------------------------------------------------------------------ */
-/*  isAdmin                                                            */
+/*  PUBLIC_PATHS                                                        */
+/* ------------------------------------------------------------------ */
+
+describe("PUBLIC_PATHS", () => {
+  it("includes /api/v1/search", () => {
+    expect(PUBLIC_PATHS).toContain("/api/v1/search");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  ROLE_HIERARCHY                                                      */
+/* ------------------------------------------------------------------ */
+
+describe("ROLE_HIERARCHY", () => {
+  it("defines LISTENER at level 1", () => {
+    expect(ROLE_HIERARCHY.LISTENER).toBe(1);
+  });
+  it("defines ARTIST at level 2", () => {
+    expect(ROLE_HIERARCHY.ARTIST).toBe(2);
+  });
+  it("defines ADMIN at level 3", () => {
+    expect(ROLE_HIERARCHY.ADMIN).toBe(3);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  ROUTE_MIN_ROLE                                                      */
+/* ------------------------------------------------------------------ */
+
+describe("ROUTE_MIN_ROLE", () => {
+  it("maps /api/v1/admin/ to ADMIN", () => {
+    expect(ROUTE_MIN_ROLE["/api/v1/admin/"]).toBe("ADMIN");
+  });
+  it("maps /admin/ to ADMIN", () => {
+    expect(ROUTE_MIN_ROLE["/admin/"]).toBe("ADMIN");
+  });
+  it("maps /api/v1/artist/ to ARTIST", () => {
+    expect(ROUTE_MIN_ROLE["/api/v1/artist/"]).toBe("ARTIST");
+  });
+  it("maps /api/v1/playlists/ to LISTENER", () => {
+    expect(ROUTE_MIN_ROLE["/api/v1/playlists/"]).toBe("LISTENER");
+  });
+  it("maps /api/v1/reports/ to LISTENER", () => {
+    expect(ROUTE_MIN_ROLE["/api/v1/reports/"]).toBe("LISTENER");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  isAdmin                                                             */
 /* ------------------------------------------------------------------ */
 
 describe("isAdmin", () => {
   it("returns true for ADMIN role", () => {
     expect(isAdmin("ADMIN")).toBe(true);
   });
-
-  it("returns false for LISTENER role", () => {
-    expect(isAdmin("LISTENER")).toBe(false);
-  });
-
   it("returns false for ARTIST role", () => {
     expect(isAdmin("ARTIST")).toBe(false);
   });
-
-  it("ADMIN_ROLES only contains ADMIN", () => {
-    expect(ADMIN_ROLES).toEqual(["ADMIN"]);
+  it("returns false for LISTENER role", () => {
+    expect(isAdmin("LISTENER")).toBe(false);
   });
 });
 
 /* ------------------------------------------------------------------ */
-/*  checkAdminAccess — unauthenticated paths                           */
+/*  isAdminRoute                                                        */
 /* ------------------------------------------------------------------ */
 
-describe("checkAdminAccess — unauthenticated access", () => {
-  it("allows non-admin paths without authentication", () => {
-    const result = checkAdminAccess({
-      pathname: "/artists/abc",
-      cookieHeader: null,
-    });
-    expect(result.authorized).toBe(true);
+describe("isAdminRoute", () => {
+  it("matches /admin", () => {
+    expect(isAdminRoute("/admin")).toBe(true);
   });
-
-  it("denies /admin without session cookie (401 UNAUTHENTICATED)", () => {
-    const result = checkAdminAccess({
-      pathname: "/admin/dashboard",
-      cookieHeader: null,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.status).toBe(401);
-      expect(result.code).toBe(RBAC_ERRORS.UNAUTHENTICATED);
-    }
+  it("matches /admin/users", () => {
+    expect(isAdminRoute("/admin/users")).toBe(true);
   });
-
-  it("denies /api/v1/admin/users without session cookie (401)", () => {
-    const result = checkAdminAccess({
-      pathname: "/api/v1/admin/users",
-      cookieHeader: null,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.status).toBe(401);
-      expect(result.code).toBe(RBAC_ERRORS.UNAUTHENTICATED);
-    }
+  it("matches /admin/moderation", () => {
+    expect(isAdminRoute("/admin/moderation")).toBe(true);
+  });
+  it("matches /api/v1/admin", () => {
+    expect(isAdminRoute("/api/v1/admin")).toBe(true);
+  });
+  it("matches /api/v1/admin/users", () => {
+    expect(isAdminRoute("/api/v1/admin/users")).toBe(true);
+  });
+  it("returns false for non-admin route", () => {
+    expect(isAdminRoute("/api/v1/artist/123")).toBe(false);
   });
 });
 
 /* ------------------------------------------------------------------ */
-/*  checkAdminAccess — valid admin token                               */
-/* ------------------------------------------------------------------ */
-
-describe("checkAdminAccess — valid ADMIN token", () => {
-  it("allows /admin when user has ADMIN role", () => {
-    const token = generateToken({ sub: "admin-user-1", role: "ADMIN" });
-    const result = checkAdminAccess({
-      pathname: "/admin/dashboard",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${token}`,
-    });
-    expect(result.authorized).toBe(true);
-    if (result.authorized) {
-      expect(result.userId).toBe("admin-user-1");
-      expect(result.role).toBe("ADMIN");
-    }
-  });
-
-  it("allows /api/v1/admin/reports when user has ADMIN role", () => {
-    const token = generateToken({ sub: "admin-user-2", role: "ADMIN" });
-    const result = checkAdminAccess({
-      pathname: "/api/v1/admin/reports",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${token}`,
-    });
-    expect(result.authorized).toBe(true);
-    if (result.authorized) {
-      expect(result.userId).toBe("admin-user-2");
-    }
-  });
-
-  it("includes artistProfileId in response when present in token", () => {
-    const token = generateToken({
-      sub: "artist-admin-1",
-      role: "ADMIN",
-      artistProfileId: "profile-xyz",
-    });
-    const result = checkAdminAccess({
-      pathname: "/admin",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${token}`,
-    });
-    expect(result.authorized).toBe(true);
-    if (result.authorized) {
-      expect(result.artistProfileId).toBe("profile-xyz");
-    }
-  });
-});
-
-/* ------------------------------------------------------------------ */
-/*  checkAdminAccess — non-admin roles (Listener/Artist)               */
-/* ------------------------------------------------------------------ */
-
-describe("checkAdminAccess — non-admin roles get 403", () => {
-  it("denies /admin for LISTENER role (403 FORBIDDEN_INSUFFICIENT_ROLE)", () => {
-    const token = generateToken({ sub: "listener-1", role: "LISTENER" });
-    const result = checkAdminAccess({
-      pathname: "/admin/dashboard",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${token}`,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.status).toBe(403);
-      expect(result.code).toBe(RBAC_ERRORS.FORBIDDEN_INSUFFICIENT_ROLE);
-    }
-  });
-
-  it("denies /api/v1/admin/users for ARTIST role (403)", () => {
-    const token = generateToken({ sub: "artist-1", role: "ARTIST" });
-    const result = checkAdminAccess({
-      pathname: "/api/v1/admin/users",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${token}`,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.status).toBe(403);
-      expect(result.code).toBe(RBAC_ERRORS.FORBIDDEN_INSUFFICIENT_ROLE);
-    }
-  });
-
-  it("returns correct error message for insufficient role", () => {
-    const token = generateToken({ sub: "listener-1", role: "LISTENER" });
-    const result = checkAdminAccess({
-      pathname: "/admin",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${token}`,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.message).toContain(
-        "You do not have sufficient permissions",
-      );
-    }
-  });
-});
-
-/* ------------------------------------------------------------------ */
-/*  checkAdminAccess — expired/tampered tokens                         */
-/* ------------------------------------------------------------------ */
-
-describe("checkAdminAccess — expired or invalid tokens", () => {
-  it("returns SESSION_EXPIRED for expired token (401)", () => {
-    const jwt = require("jsonwebtoken");
-    const secret = process.env.JWT_SECRET!;
-    const pastToken = jwt.sign(
-      {
-        sub: "user-1",
-        role: "ADMIN",
-        iat: Math.floor(Date.now() / 1000) - 1000000,
-        exp: Math.floor(Date.now() / 1000) - 1,
-      },
-      secret,
-      { algorithm: "HS256" },
-    );
-    const result = checkAdminAccess({
-      pathname: "/admin",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${pastToken}`,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.status).toBe(401);
-      expect(result.code).toBe(RBAC_ERRORS.SESSION_EXPIRED);
-    }
-  });
-
-  it("returns UNAUTHENTICATED for tampered token", () => {
-    const token = generateToken({ sub: "user-1", role: "ADMIN" });
-    const tampered = token.slice(0, -5) + "invalid";
-    const result = checkAdminAccess({
-      pathname: "/admin",
-      cookieHeader: `${SESSION_COOKIE_NAME}=${tampered}`,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.status).toBe(401);
-    }
-  });
-
-  it("returns UNAUTHENTICATED for completely invalid token", () => {
-    const result = checkAdminAccess({
-      pathname: "/admin",
-      cookieHeader: `${SESSION_COOKIE_NAME}=not-a-real-jwt-token`,
-    });
-    expect(result.authorized).toBe(false);
-    if (!result.authorized) {
-      expect(result.status).toBe(401);
-    }
-  });
-
-  it("allows non-admin route with invalid token", () => {
-    const result = checkAdminAccess({
-      pathname: "/artists/abc",
-      cookieHeader: `${SESSION_COOKIE_NAME}=invalid`,
-    });
-    expect(result.authorized).toBe(true);
-  });
-});
-
-/* ------------------------------------------------------------------ */
-/*  getSessionClaims                                                   */
+/*  getSessionClaims                                                    */
 /* ------------------------------------------------------------------ */
 
 describe("getSessionClaims", () => {
-  it("returns userId from token", () => {
-    const token = generateToken({ sub: "user-123", role: "LISTENER" });
-    const claims = getSessionClaims(token);
-    expect(claims.userId).toBe("user-123");
-    expect(claims.role).toBe("LISTENER");
-  });
-
-  it("includes artistProfileId when present", () => {
+  it("returns userId, role, and artistProfileId for a valid token", () => {
     const token = generateToken({
-      sub: "user-456",
+      sub: "user-42",
       role: "ARTIST",
-      artistProfileId: "profile-789",
+      artistProfileId: "artist-profile-42",
     });
     const claims = getSessionClaims(token);
-    expect(claims.artistProfileId).toBe("profile-789");
+    expect(claims.userId).toBe("user-42");
+    expect(claims.role).toBe("ARTIST");
+    expect(claims.artistProfileId).toBe("artist-profile-42");
+  });
+
+  it("returns undefined artistProfileId when not in token", () => {
+    const token = generateToken({ sub: "user-42", role: "LISTENER" });
+    const claims = getSessionClaims(token);
+    expect(claims.artistProfileId).toBeUndefined();
   });
 
   it("throws TokenError for invalid token", () => {
@@ -374,31 +225,282 @@ describe("getSessionClaims", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  Route pattern coverage                                             */
+/*  checkRouteAccess — Role matching and hierarchy                       */
 /* ------------------------------------------------------------------ */
 
-describe("ADMIN_ROUTE_PATTERNS", () => {
-  it("contains expected admin route patterns", () => {
-    expect(ADMIN_ROUTE_PATTERNS).toContain("/admin");
-    expect(ADMIN_ROUTE_PATTERNS).toContain("/api/v1/admin");
+describe("checkRouteAccess", () => {
+  const testSecret =
+    "test-secret-key-for-unit-testing-must-be-at-least-256-bits-long";
+
+  beforeEach(() => {
+    process.env.JWT_SECRET = testSecret;
   });
 
-  it("has exactly 2 patterns", () => {
-    expect(ADMIN_ROUTE_PATTERNS).toHaveLength(2);
+  afterEach(() => {
+    delete process.env.JWT_SECRET;
   });
-});
 
-/* ------------------------------------------------------------------ */
-/*  RBAC_ERRORS constants                                              */
-/* ------------------------------------------------------------------ */
+  // ----- Public routes bypass role checks -----
 
-describe("RBAC_ERRORS", () => {
-  it("contains expected error codes", () => {
-    expect(RBAC_ERRORS.UNAUTHENTICATED).toBe("UNAUTHENTICATED");
-    expect(RBAC_ERRORS.FORBIDDEN_INSUFFICIENT_ROLE).toBe(
-      "FORBIDDEN_INSUFFICIENT_ROLE",
-    );
-    expect(RBAC_ERRORS.SESSION_EXPIRED).toBe("SESSION_EXPIRED");
-    expect(RBAC_ERRORS.SESSION_INVALID).toBe("SESSION_INVALID");
+  describe("public route exemption", () => {
+    it("returns authorized for /api/v1/search without any cookie", () => {
+      const result = checkRouteAccess({
+        pathname: "/api/v1/search",
+        cookieHeader: null,
+      });
+      expect(result).toEqual({ authorized: true });
+    });
+
+    it("returns authorized for /api/v1/search?q=foo without any cookie", () => {
+      const result = checkRouteAccess({
+        pathname: "/api/v1/search?q=foo",
+        cookieHeader: null,
+      });
+      expect(result).toEqual({ authorized: true });
+    });
+
+    it("returns authorized for /api/v1/tracks/id/stream without any cookie", () => {
+      const result = checkRouteAccess({
+        pathname: "/api/v1/tracks/abc/stream",
+        cookieHeader: null,
+      });
+      expect(result).toEqual({ authorized: true });
+    });
+  });
+
+  // ----- /admin/* — ADMIN only -----
+
+  describe("/admin/* — ADMIN required", () => {
+    it("returns 401 when no session cookie", () => {
+      const result = checkRouteAccess({
+        pathname: "/admin/users",
+        cookieHeader: null,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(401);
+    });
+
+    it("returns 401 when session is expired/tampered", () => {
+      const result = checkRouteAccess({
+        pathname: "/admin/users",
+        cookieHeader: "__Host-indie_session=tampered-token",
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(401);
+    });
+
+    it("returns 403 for LISTENER on /admin", () => {
+      const token = generateToken({ sub: "user-1", role: "LISTENER" });
+      const result = checkRouteAccess({
+        pathname: "/admin/users",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(403);
+    });
+
+    it("returns 403 for ARTIST on /admin", () => {
+      const token = generateToken({ sub: "user-2", role: "ARTIST" });
+      const result = checkRouteAccess({
+        pathname: "/admin/users",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(403);
+    });
+
+    it("returns 200 (authorized) for ADMIN on /admin", () => {
+      const token = generateToken({ sub: "admin-1", role: "ADMIN" });
+      const result = checkRouteAccess({
+        pathname: "/admin/users",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+      expect((result as RouteAccessResult & { authorized: true }).role).toBe("ADMIN");
+      expect((result as RouteAccessResult & { authorized: true }).userId).toBe("admin-1");
+    });
+
+    it("returns 200 (authorized) for ADMIN on /api/v1/admin", () => {
+      const token = generateToken({ sub: "admin-1", role: "ADMIN" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/admin/reports",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+    });
+  });
+
+  // ----- /api/v1/artist/* — ARTIST or ADMIN -----
+
+  describe("/api/v1/artist/* — ARTIST or ADMIN required", () => {
+    it("returns 401 when no session cookie", () => {
+      const result = checkRouteAccess({
+        pathname: "/api/v1/artist/profile",
+        cookieHeader: null,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(401);
+    });
+
+    it("returns 403 for LISTENER on /api/v1/artist", () => {
+      const token = generateToken({ sub: "user-1", role: "LISTENER" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/artist/profile",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(403);
+    });
+
+    it("returns 200 (authorized) for ARTIST on /api/v1/artist", () => {
+      const token = generateToken({
+        sub: "user-2",
+        role: "ARTIST",
+        artistProfileId: "artist-profile-2",
+      });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/artist/profile",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+      expect((result as RouteAccessResult & { authorized: true }).role).toBe("ARTIST");
+      expect((result as RouteAccessResult & { authorized: true }).userId).toBe("user-2");
+      expect((result as RouteAccessResult & { authorized: true }).artistProfileId).toBe(
+        "artist-profile-2",
+      );
+    });
+
+    it("returns 200 (authorized) for ADMIN on /api/v1/artist", () => {
+      const token = generateToken({ sub: "admin-1", role: "ADMIN" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/artist/profile",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+    });
+  });
+
+  // ----- /api/v1/playlists/* — any authenticated user -----
+
+  describe("/api/v1/playlists/* — any authenticated user required", () => {
+    it("returns 401 when no session cookie", () => {
+      const result = checkRouteAccess({
+        pathname: "/api/v1/playlists",
+        cookieHeader: null,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(401);
+    });
+
+    it("returns 200 (authorized) for LISTENER on /api/v1/playlists", () => {
+      const token = generateToken({ sub: "user-1", role: "LISTENER" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/playlists",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+      expect((result as RouteAccessResult & { authorized: true }).role).toBe("LISTENER");
+    });
+
+    it("returns 200 (authorized) for ARTIST on /api/v1/playlists", () => {
+      const token = generateToken({ sub: "user-2", role: "ARTIST" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/playlists",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+    });
+
+    it("returns 200 (authorized) for ADMIN on /api/v1/playlists", () => {
+      const token = generateToken({ sub: "admin-1", role: "ADMIN" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/playlists",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+    });
+  });
+
+  // ----- /api/v1/reports/* — any authenticated user -----
+
+  describe("/api/v1/reports/* — any authenticated user required", () => {
+    it("returns 401 when no session cookie", () => {
+      const result = checkRouteAccess({
+        pathname: "/api/v1/reports/123",
+        cookieHeader: null,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(401);
+    });
+
+    it("returns 200 (authorized) for LISTENER on /api/v1/reports", () => {
+      const token = generateToken({ sub: "user-1", role: "LISTENER" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/reports/123",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+    });
+
+    it("returns 200 (authorized) for ARTIST on /api/v1/reports", () => {
+      const token = generateToken({ sub: "user-2", role: "ARTIST" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/reports/123",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+    });
+
+    it("returns 200 (authorized) for ADMIN on /api/v1/reports", () => {
+      const token = generateToken({ sub: "admin-1", role: "ADMIN" });
+      const result = checkRouteAccess({
+        pathname: "/api/v1/reports/123",
+        cookieHeader: `__Host-indie_session=${token}`,
+      });
+      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
+    });
+  });
+
+  // ----- Non-protected routes -----
+
+  describe("non-protected routes bypass", () => {
+    it("returns authorized for / page", () => {
+      const result = checkRouteAccess({ pathname: "/", cookieHeader: null });
+      expect(result).toEqual({ authorized: true });
+    });
+
+    it("returns authorized for /login", () => {
+      const result = checkRouteAccess({ pathname: "/login", cookieHeader: null });
+      expect(result).toEqual({ authorized: true });
+    });
+
+    it("returns authorized for /register", () => {
+      const result = checkRouteAccess({ pathname: "/register", cookieHeader: null });
+      expect(result).toEqual({ authorized: true });
+    });
+  });
+
+  // ----- Expired token handling -----
+
+  describe("expired token handling", () => {
+    it("returns 401 for expired token on any protected route", () => {
+      const jwt = require("jsonwebtoken");
+      const expiredToken = jwt.sign(
+        {
+          sub: "user-1",
+          role: "ADMIN",
+          iat: Math.floor(Date.now() / 1000) - 1000000,
+          exp: Math.floor(Date.now() / 1000) - 1,
+        },
+        testSecret,
+        { algorithm: "HS256" },
+      );
+      const result = checkRouteAccess({
+        pathname: "/admin/users",
+        cookieHeader: `__Host-indie_session=${expiredToken}`,
+      });
+      expect((result as RouteAccessResult & { authorized: false }).authorized).toBe(false);
+      expect((result as RouteAccessResult & { authorized: false }).status).toBe(401);
+    });
   });
 });

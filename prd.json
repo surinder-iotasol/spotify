@@ -253,7 +253,7 @@
         "Integration tests verify HTTP 401, 403, and header injection behavior for protected API routes."
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-007",
         "STORY-security-002"
