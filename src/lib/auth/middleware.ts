@@ -296,9 +296,7 @@ export function checkRouteAccess(options: {
 export function checkAdminAccess(options: {
   pathname: string;
   cookieHeader: string | null;
-}):
-  | { authorized: true; userId: string; role: UserRole; artistProfileId?: string }
-  | { authorized: false; status: number; code: string; message: string } {
+}): RouteAccessResult {
   // If it's not an admin route, always allow
   if (!isAdminRoute(options.pathname)) {
     return { authorized: true };

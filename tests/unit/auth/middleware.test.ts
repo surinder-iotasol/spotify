@@ -315,9 +315,9 @@ describe("checkRouteAccess", () => {
         pathname: "/admin/users",
         cookieHeader: `__Host-indie_session=${token}`,
       });
-      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
-      expect((result as RouteAccessResult & { authorized: true }).role).toBe("ADMIN");
-      expect((result as RouteAccessResult & { authorized: true }).userId).toBe("admin-1");
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole }).authorized).toBe(true);
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole }).role).toBe("ADMIN");
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole }).userId).toBe("admin-1");
     });
 
     it("returns 200 (authorized) for ADMIN on /api/v1/admin", () => {
@@ -362,10 +362,10 @@ describe("checkRouteAccess", () => {
         pathname: "/api/v1/artist/profile",
         cookieHeader: `__Host-indie_session=${token}`,
       });
-      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
-      expect((result as RouteAccessResult & { authorized: true }).role).toBe("ARTIST");
-      expect((result as RouteAccessResult & { authorized: true }).userId).toBe("user-2");
-      expect((result as RouteAccessResult & { authorized: true }).artistProfileId).toBe(
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole; artistProfileId?: string }).authorized).toBe(true);
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole; artistProfileId?: string }).role).toBe("ARTIST");
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole; artistProfileId?: string }).userId).toBe("user-2");
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole; artistProfileId?: string }).artistProfileId).toBe(
         "artist-profile-2",
       );
     });
@@ -398,8 +398,8 @@ describe("checkRouteAccess", () => {
         pathname: "/api/v1/playlists",
         cookieHeader: `__Host-indie_session=${token}`,
       });
-      expect((result as RouteAccessResult & { authorized: true }).authorized).toBe(true);
-      expect((result as RouteAccessResult & { authorized: true }).role).toBe("LISTENER");
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole }).authorized).toBe(true);
+      expect((result as RouteAccessResult & { authorized: true; userId: string; role: UserRole }).role).toBe("LISTENER");
     });
 
     it("returns 200 (authorized) for ARTIST on /api/v1/playlists", () => {
