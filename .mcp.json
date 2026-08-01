@@ -2,14 +2,14 @@
   "mcpServers": {
     "jetro": {
       "type": "stdio",
-      "command": "/home/surindersingh/.jetro/runtime/node-linux-x64",
+      "command": "/home/nitin-sharma/.jetro/runtime/node-linux-x64",
       "args": [
-        "/home/surindersingh/.jetro/mcp-server/index.js"
+        "/home/nitin-sharma/.jetro/mcp-server/index.js"
       ],
       "env": {
-        "JET_WORKSPACE": "/home/surindersingh/Documents/ralph-studio",
+        "JET_WORKSPACE": "/home/nitin-sharma/ralph-workspaces/468e0e06-4d93-4350-b48d-1501e5f144a3/ffd5023e-2540-4e57-8804-ece0e907547d",
         "JET_API_URL": "https://api.jetro.ai",
-        "PATH": "/home/surindersingh/.jetro/runtime:/home/surindersingh/.local/bin:/home/surindersingh/.opencode/bin:/home/surindersingh/Documents/taxtalk:/home/surindersingh/.bun/bin:/home/surindersingh/.nvm/versions/node/v22.12.0/bin:/home/surindersingh/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/surindersingh/.dotnet/tools:/home/surindersingh/.dotnet/tools"
+        "PATH": "/home/nitin-sharma/.jetro/runtime:/home/nitin-sharma/.local/bin:/home/nitin-sharma/.opencode/bin:/home/nitin-sharma/Documents/taxtalk:/home/nitin-sharma/.bun/bin:/home/nitin-sharma/.nvm/versions/node/v22.12.0/bin:/home/nitin-sharma/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/nitin-sharma/.dotnet/tools:/home/nitin-sharma/.dotnet/tools"
       }
     }
   }

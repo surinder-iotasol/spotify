@@ -11,7 +11,7 @@ Usage:
 ## Steps
 
 1. First identify the fingerprint using `/audit-fetch <logId>` — it's shown in the Error Details section.
-2. Run: `cd /home/surindersingh/Documents/ralph-studio/backend && npx tsx scripts/audit-resolve.ts $ARGUMENTS`
+2. Run: `cd /home/nitin-sharma/ralph-studio/backend && npx tsx scripts/audit-resolve.ts $ARGUMENTS`
 3. After recording, the next occurrence of this fingerprint will show the resolution in the forensic briefing.
 
 ## When to use

@@ -16,7 +16,7 @@ Run this command to investigate a specific audit log entry with full forensic co
 
 ## Steps
 
-1. Run: `cd /home/surindersingh/Documents/ralph-studio/backend && npx tsx scripts/audit-fetch.ts $ARGUMENTS`
+1. Run: `cd /home/nitin-sharma/ralph-studio/backend && npx tsx scripts/audit-fetch.ts $ARGUMENTS`
 2. The script will output a markdown report. Read the report carefully.
 3. Focus on:
    - The **Error Details** section for the root cause
