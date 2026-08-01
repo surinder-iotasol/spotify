@@ -274,7 +274,7 @@
         "Integration tests assert HTTP 403 response structure when an unauthorized user attempts to edit another user's playlist or track."
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-security-001",
         "STORY-security-002"
