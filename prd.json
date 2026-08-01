@@ -131,7 +131,7 @@
         "Integration tests verify JWT session extraction from HTTP-only cookies and RBAC route protection for Listener vs Admin roles."
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-006"
       ],
