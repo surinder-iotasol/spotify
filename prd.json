@@ -295,14 +295,80 @@
         "Integration tests confirm 401 error envelope format when calling wrapped endpoints without valid session headers."
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-security-002",
         "STORY-setup-006"
       ],
-      "notes": "",
+      "notes": "auto-split into 4 sub-stories",
       "effort": "medium",
       "model": "deepseek"
+    },
+    {
+      "id": "STORY-security-005a",
+      "title": "Define AuthContext class and error code constants",
+      "description": "Create immutable AuthContext class with frozen user object and ERR_UNAUTHORIZED and ERR_FORBIDDEN_ROLE constants in wrappers.ts.",
+      "acceptanceCriteria": [
+        "AuthContext class with frozen user property is importable and throws on mutation.",
+        "ERR_UNAUTHORIZED and ERR_FORBIDDEN_ROLE constants are exported from wrappers.ts."
+      ],
+      "priority": 14.1,
+      "effort": "low",
+      "passes": true,
+      "dependsOn": [
+        "STORY-security-002",
+        "STORY-setup-006"
+      ],
+      "notes": "Foundation piece. Creates AuthContext.create factory and error code constants in wrappers.ts.",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-security-005b",
+      "title": "Implement extractAuthContext and withAuth wrapper",
+      "description": "Implement extractAuthContext that builds AuthContext from middleware headers or cookie verification, and withAuth HOF wrapper.",
+      "acceptanceCriteria": [
+        "extractAuthContext returns AuthContext from x-user-* headers or cookie token verification.",
+        "withAuth HOF passes AuthContext to inner handler or returns 401 when auth fails."
+      ],
+      "priority": 14.2,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-security-005a"
+      ],
+      "notes": "Core auth extraction and wrapper implementation in wrappers.ts."
+    },
+    {
+      "id": "STORY-security-005c",
+      "title": "Implement withRole wrapper and validateRole helper",
+      "description": "Implement withRole HOF wrapping withAuth with role checking and ERR_FORBIDDEN_ROLE response.",
+      "acceptanceCriteria": [
+        "withRole accepts allowedRoles array and passes handler only when user role matches.",
+        "withRole returns 403 with ERR_FORBIDDEN_ROLE when role check fails."
+      ],
+      "priority": 14.3,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-security-005b"
+      ],
+      "notes": "Extends withAuth with role gate in wrappers.ts."
+    },
+    {
+      "id": "STORY-security-005d",
+      "title": "Write unit tests for AuthContext withAuth and withRole wrappers",
+      "description": "Unit tests for AuthContext, extractAuthContext, withAuth, withRole, and error responses.",
+      "acceptanceCriteria": [
+        "Unit tests verify AuthContext mutation immutability and create factory.",
+        "Unit tests verify withAuth 401 response and role boundary validation."
+      ],
+      "priority": 14.4,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-security-005c"
+      ],
+      "notes": "Unit tests in tests/unit/auth/wrappers.test.ts."
     },
     {
       "id": "STORY-storage-001",
