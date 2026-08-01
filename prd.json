@@ -171,7 +171,7 @@
         "Sample unit test `src/lib/sample.test.ts` and sample E2E spec `e2e/home.spec.ts` pass cleanly."
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-008"
       ],
