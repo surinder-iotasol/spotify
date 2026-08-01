@@ -5,6 +5,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    environmentMatchGlobs: [
+      ['src/**', 'jsdom'],
+    ],
     include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
     exclude: ['node_modules', '.next', 'e2e'],
   },
