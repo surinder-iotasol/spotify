@@ -608,7 +608,7 @@
         "Integration test validates converting a guest playlist payload into a persisted Playlist entity."
       ],
       "priority": 23,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-auth-001",
         "STORY-setup-004"
