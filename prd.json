@@ -699,7 +699,7 @@
         "Integration test calls POST /api/v1/users/me/upgrade-to-artist with valid payload and asserts HTTP 200 plus correct database state."
       ],
       "priority": 27,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-004",
         "STORY-security-002"
