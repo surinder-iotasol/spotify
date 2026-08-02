@@ -24,14 +24,31 @@ import {
 } from "@/lib/auth/registration";
 import { validateBody } from "@/lib/api/validation";
 import { apiSuccessResponse, apiErrorResponse } from "@/lib/api/response";
+import { logRequestBody } from "@/lib/auth/logging";
 
 /* ------------------------------------------------------------------ */
 /*  Route handler                                                      */
 /* ------------------------------------------------------------------ */
 
 export async function POST(request: NextRequest) {
-  // 1. Parse body
-  const body = await request.json().catch(() => null);
+  // 0. Log the request body (sanitized — passwords are redacted)
+  const { originalBody: body } = await logRequestBody(request, 'register');
+
+  // 1. Guard: reject if body could not be parsed
+  if (body == null) {
+    return new Response(
+      JSON.stringify(
+        apiErrorResponse(
+          REGISTRATION_ERRORS.INVALID_BODY,
+          "Invalid or empty request body.",
+        ),
+      ),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 
   // 2. Validate against registration schema
   const validation = validateBody(body, registrationSchema);
