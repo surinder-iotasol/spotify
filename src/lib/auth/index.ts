@@ -198,6 +198,60 @@ export function verifyToken(token: string): VerifiedSession {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Cookie parsing & session extraction                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Parse the Cookie header value into a simple key-value map.
+ *
+ * @param cookieHeader — The raw Cookie header string.
+ * @returns A map of cookie name → value.
+ */
+export function parseCookies(cookieHeader: string | null): Record<string, string> {
+  if (!cookieHeader) return {};
+  return Object.fromEntries(
+    cookieHeader
+      .split(";")
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .map((c) => {
+        const idx = c.indexOf("=");
+        if (idx === -1) return [c, ""];
+        return [c.slice(0, idx), c.slice(idx + 1)];
+      }),
+  );
+}
+
+/**
+ * Extract the session JWT token from a Cookie header string.
+ *
+ * @param cookieHeader — The raw Cookie header.
+ * @returns The session token, or `null` if not present.
+ */
+export function extractSessionToken(cookieHeader: string | null): string | null {
+  const cookies = parseCookies(cookieHeader);
+  return cookies[SESSION_COOKIE_NAME] ?? null;
+}
+
+/**
+ * Verify the session cookie from a Cookie header and return the
+ * decoded JWT payload, or `null` if the session is missing or invalid.
+ *
+ * @param cookieHeader — The raw Cookie header string.
+ * @returns The verified session (with `userId`), or `null`.
+ */
+export function verifySession(cookieHeader: string | null): VerifiedSession | null {
+  const token = extractSessionToken(cookieHeader);
+  if (!token) return null;
+
+  try {
+    return verifyToken(token);
+  } catch {
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Errors                                                             */
 /* ------------------------------------------------------------------ */
 
