@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  plugins: [react()],
   test: {
     globals: true,
     environment: 'jsdom',
@@ -9,7 +11,7 @@ export default defineConfig({
         url: 'http://localhost/',
       },
     },
-    include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next', 'e2e'],
     setupFiles: ['./tests/setup.ts'],
     coverage: {
@@ -24,6 +26,9 @@ export default defineConfig({
         statements: 80,
       },
     },
+  },
+  esbuild: {
+    jsx: 'automatic',
   },
   resolve: {
     alias: {
