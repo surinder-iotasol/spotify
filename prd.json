@@ -515,7 +515,7 @@
         "Integration tests cover forgot password uniform response, reset password execution, token expiry rejection, and credential update logic."
       ],
       "priority": 21,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-auth-001",
         "STORY-security-001"
@@ -535,14 +535,66 @@
         "Unit tests in tests/unit/middleware/sanitizer.test.ts verify payload redaction across various nested JSON structures."
       ],
       "priority": 22,
+      "passes": true,
+      "dependsOn": [
+        "STORY-setup-006",
+        "STORY-security-001"
+      ],
+      "notes": "auto-split into 3 sub-stories",
+      "effort": "small",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-auth-004a",
+      "title": "Implement sensitive field sanitizer utility",
+      "description": "Create a sanitizePassword function that recursively strips password, oldPassword, newPassword fields from any nested JSON object or array, returning a new sanitized copy.",
+      "acceptanceCriteria": [
+        "sanitizePassword removes password and newPassword keys from flat objects.",
+        "sanitizePassword works on deeply nested structures up to 3 levels.",
+        "sanitizePassword leaves non-sensitive fields intact."
+      ],
+      "priority": 22.1,
+      "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-setup-006",
         "STORY-security-001"
       ],
-      "notes": "",
-      "effort": "small",
-      "model": "deepseek"
+      "notes": ""
+    },
+    {
+      "id": "STORY-auth-004b",
+      "title": "Create and wire logging middleware for auth routes",
+      "description": "Build a Next.js request-scoped middleware that wraps auth route handlers to call sanitizePassword on request bodies, ensuring passwords never reach application or central monitoring logs.",
+      "acceptanceCriteria": [
+        "Middleware intercepts POST/PUT bodies on /api/v1/auth routes.",
+        "Redacted payloads are logged instead of originals.",
+        "Auth routes function correctly with sanitized context intact."
+      ],
+      "priority": 22.2,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-auth-004a"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "STORY-auth-004c",
+      "title": "Write unit tests for password sanitizer and middleware",
+      "description": "Add unit tests in tests/unit/middleware/sanitizer.test.ts that verify payload redaction across flat objects, nested structures, arrays of credentials, and edge cases.",
+      "acceptanceCriteria": [
+        "Tests verify flat object sanitization.",
+        "Tests verify nested structure sanitization.",
+        "Tests cover edge cases including empty bodies and non-objects."
+      ],
+      "priority": 22.3,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-auth-004b"
+      ],
+      "notes": ""
     },
     {
       "id": "STORY-auth-005",
