@@ -677,7 +677,7 @@
         "Playwright E2E spec e2e/tests/password-reset.spec.ts verifies full password recovery user flow from forgot-password submission to reset-password update."
       ],
       "priority": 26,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-auth-003",
         "STORY-setup-003"
