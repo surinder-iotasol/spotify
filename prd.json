@@ -654,7 +654,7 @@
         "Playwright E2E spec e2e/tests/login.spec.ts tests valid login flow, invalid credentials error, and guest migration trigger."
       ],
       "priority": 25,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-auth-002",
         "STORY-auth-005",
