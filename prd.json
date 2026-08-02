@@ -555,7 +555,7 @@
       ],
       "priority": 22.1,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-006",
         "STORY-security-001"
