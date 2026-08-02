@@ -631,7 +631,7 @@
         "Playwright E2E spec e2e/tests/register.spec.ts covers successful registration, duplicate email handling, and validation error display."
       ],
       "priority": 24,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-auth-001",
         "STORY-setup-003"
