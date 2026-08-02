@@ -590,7 +590,7 @@
       ],
       "priority": 22.3,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-auth-004b"
       ],
