@@ -37,7 +37,6 @@ type VerificationState = 'loading' | 'success' | 'error';
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [state, setState] = useState<VerificationState>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [resending, setResending] = useState(false);
