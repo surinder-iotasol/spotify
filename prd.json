@@ -786,7 +786,7 @@
         "Playwright spec in e2e/tests/artist-upgrade.spec.ts covers filling out the upgrade form, submitting, and verifying updated role state."
       ],
       "priority": 31,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-role-001",
         "STORY-setup-003"
