@@ -969,7 +969,7 @@
         "Integration test calls GET /api/v1/users/:userId and asserts HTTP 200 response with correct public data."
       ],
       "priority": 36,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-setup-008"
       ],
