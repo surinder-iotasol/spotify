@@ -764,7 +764,7 @@
         "Integration test verifies that POST /api/v1/tracks returns 403 when invoked by an unverified account."
       ],
       "priority": 30,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-role-003",
         "STORY-security-005"
