@@ -808,7 +808,7 @@
         "Playwright spec in e2e/tests/email-verification.spec.ts tests visiting /verify-email with valid and expired tokens."
       ],
       "priority": 32,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-role-003",
         "STORY-setup-003"
