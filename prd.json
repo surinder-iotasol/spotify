@@ -852,7 +852,7 @@
         "Integration test executes PATCH /api/v1/artist-profile with valid and invalid payloads and verifies responses."
       ],
       "priority": 34,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-role-001",
         "STORY-security-005"
