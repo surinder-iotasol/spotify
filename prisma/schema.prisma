@@ -93,6 +93,7 @@ model User {
   followsAsFollower       Follow[]     @relation("FollowFollower")
   reportsAsReporter       Report[]
   auditLogsAsAdmin        AuditLog[]   @relation("AuditLogAdmin")
+  verificationTokens      VerificationToken[]
 
   @@map("users")
 }
