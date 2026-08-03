@@ -142,19 +142,6 @@ export function ArtistUpgradeForm({ onSuccess, className }: ArtistUpgradeFormPro
     setErrors((prev) => ({ ...prev, bio: validateBio(bio) }));
   }
 
-  /* -- Genre tag toggle -- */
-
-  function handleGenreToggle(value: string, checked: boolean) {
-    let next: string[];
-    if (checked) {
-      next = [...selectedGenres, value];
-    } else {
-      next = selectedGenres.filter((g) => g !== value);
-    }
-    setSelectedGenres(next);
-    setErrors((prev) => ({ ...prev, genreTags: validateGenreTags(next) }));
-  }
-
   /* -- Submit handler -- */
 
   async function handleSubmit(e: React.FormEvent) {
