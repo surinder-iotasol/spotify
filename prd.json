@@ -895,7 +895,7 @@
       ],
       "priority": 35.1,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-profile-002",
         "STORY-storage-001"
