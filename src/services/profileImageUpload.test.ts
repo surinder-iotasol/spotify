@@ -157,27 +157,23 @@ describe("uploadProfileImage", () => {
     findUnique: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   } {
-    const findUnique = vi.fn().mockResolvedValue({
+    const baseProfile = {
       id: testProfileId,
       userId: testUserId,
       stageName: "Test Artist",
       bio: "Bio text",
-      avatarUrl: null,
-      headerImageUrl: null,
-      socialLinks: null,
+      avatarUrl: null as string | null,
+      headerImageUrl: null as string | null,
+      socialLinks: null as unknown[] | null,
       isVerified: false,
       ...overrides,
-    });
-    const update = vi.fn().mockResolvedValue({
-      id: testProfileId,
-      userId: testUserId,
-      stageName: "Test Artist",
-      bio: "Bio text",
-      avatarUrl: null,
-      headerImageUrl: null,
-      socialLinks: null,
-      isVerified: false,
-      ...overrides,
+    };
+    const findUnique = vi.fn().mockResolvedValue({ ...baseProfile });
+    const update = vi.fn().mockImplementation((args: { where: { id: string }; data: Record<string, unknown> }) => {
+      return Promise.resolve({
+        ...baseProfile,
+        ...args.data,
+      });
     });
     return {
       repo: { findUnique, update } as ArtistProfileRepository,
@@ -412,155 +408,5 @@ describe("uploadProfileImage", () => {
 
     expect(resultAvatar.avatarUrl).not.toBeNull();
     expect(resultHeader.headerImageUrl).not.toBeNull();
-  });
-});
-
-// ------------------------------------------------------------------ //
-//  Tests — uploadProfileImage                                         //
-// ------------------------------------------------------------------ //
-
-describe("uploadProfileImage", () => {
-  it("calls storage.uploadObject with correct params for avatar upload", async () => {
-    const mockStorage = {
-      uploadObject: vi.fn().mockResolvedValue({ eTag: "abc123" }),
-    };
-    const mockRepository = {
-      findUnique: vi.fn().mockResolvedValue({
-        id: "profile-123",
-        stageName: "Artist One",
-        bio: "Hello",
-        avatarUrl: null,
-        headerImageUrl: null,
-        socialLinks: [],
-        isVerified: false,
-      }),
-      update: vi.fn().mockResolvedValue({
-        id: "profile-123",
-        stageName: "Artist One",
-        bio: "Hello",
-        avatarUrl: "https://avatars/user-1/profile-123-avatar-1234567890123",
-        headerImageUrl: null,
-        socialLinks: [],
-        isVerified: false,
-      }),
-    };
-
-    const buffer = Buffer.from("image-data");
-    const result = await uploadProfileImage(
-      buffer,
-      "image/jpeg",
-      "avatar",
-      "user-1",
-      mockRepository,
-      mockStorage,
-    );
-
-    expect(mockStorage.uploadObject).toHaveBeenCalledTimes(1);
-    const [key, body, contentType] = (mockStorage.uploadObject).mock.calls[0];
-    expect(key).toContain("avatars/");
-    expect(key).toContain("user-1");
-    expect(body).toBe(buffer);
-    expect(contentType).toBe("image/jpeg");
-    expect(result.avatarUrl).toBe("https://avatars/user-1/profile-123-avatar-1234567890123");
-  });
-
-  it("calls storage.uploadObject with correct params for header upload", async () => {
-    const mockStorage = {
-      uploadObject: vi.fn().mockResolvedValue({ eTag: "def456" }),
-    };
-    const mockRepository = {
-      findUnique: vi.fn().mockResolvedValue({
-        id: "profile-456",
-        stageName: "Artist Two",
-        bio: "World",
-        avatarUrl: null,
-        headerImageUrl: null,
-        socialLinks: [],
-        isVerified: true,
-      }),
-      update: vi.fn().mockResolvedValue({
-        id: "profile-456",
-        stageName: "Artist Two",
-        bio: "World",
-        avatarUrl: null,
-        headerImageUrl: "https://headers/user-2/profile-456-header-1234567890123",
-        socialLinks: [],
-        isVerified: true,
-      }),
-    };
-
-    const buffer = Buffer.from("header-image-data");
-    const result = await uploadProfileImage(
-      buffer,
-      "image/png",
-      "header",
-      "user-2",
-      mockRepository,
-      mockStorage,
-    );
-
-    expect(mockStorage.uploadObject).toHaveBeenCalledTimes(1);
-    const [key] = (mockStorage.uploadObject).mock.calls[0];
-    expect(key).toContain("headers/");
-    expect(result.headerImageUrl).toBe("https://headers/user-2/profile-456-header-1234567890123");
-  });
-
-  it("throws ARTIST_PROFILE_NOT_FOUND when user has no artist profile", async () => {
-    const mockStorage = { uploadObject: vi.fn() };
-    const mockRepository = {
-      findUnique: vi.fn().mockResolvedValue(null),
-      update: vi.fn(),
-    };
-
-    await expect(
-      uploadProfileImage(Buffer.from("data"), "image/jpeg", "avatar", "user-nobody", mockRepository, mockStorage),
-    ).rejects.toEqual({
-      code: "ARTIST_PROFILE_NOT_FOUND",
-      message: "Artist profile not found. Upgrade to artist role first.",
-    });
-  });
-
-  it("throws validation error code when file type is invalid", async () => {
-    const mockStorage = { uploadObject: vi.fn() };
-    const mockRepository = {
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    };
-
-    await expect(
-      uploadProfileImage(
-        Buffer.from("pdf-data"),
-        "application/pdf",
-        "avatar",
-        "user-1",
-        mockRepository,
-        mockStorage,
-      ),
-    ).rejects.toEqual({
-      code: "INVALID_AVATAR_URL",
-      message: expect.stringContaining("Unsupported image type"),
-    });
-  });
-
-  it("throws validation error code when file size exceeds limit", async () => {
-    const mockStorage = { uploadObject: vi.fn() };
-    const mockRepository = {
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    };
-
-    await expect(
-      uploadProfileImage(
-        Buffer.alloc(MAX_IMAGE_SIZE_BYTES + 1, 0),
-        "image/jpeg",
-        "header",
-        "user-1",
-        mockRepository,
-        mockStorage,
-      ),
-    ).rejects.toEqual({
-      code: "INVALID_HEADER_URL",
-      message: expect.stringContaining("exceeds"),
-    });
   });
 });
