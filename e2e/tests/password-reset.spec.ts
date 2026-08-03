@@ -423,7 +423,7 @@ test.describe("Reset Password Page E2E", () => {
   test("passes token to the API in reset password submission", async ({ page }) => {
     let capturedBody: Record<string, unknown> = {};
     await page.route(API_RESET, async (route) => {
-      const body = JSON.parse(route.request().postData());
+      const body = JSON.parse(route.request().postData() || '{}');
       capturedBody = body;
       await route.fulfill({
         status: 200,

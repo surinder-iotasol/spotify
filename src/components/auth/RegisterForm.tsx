@@ -168,10 +168,10 @@ export function RegisterForm({ onSubmit, className }: RegisterFormProps) {
 
       if (!res.ok) {
         const errorBody = await res.json();
-        const message =
-          (errorBody.error?.message as string) ||
+        const errorObj = errorBody && typeof errorBody === 'object' && 'error' in errorBody ? (errorBody as { error?: { message?: string; code?: string } }) : null;
+        const message = errorObj?.error?.message ||
           (typeof errorBody === 'string' ? errorBody : 'Registration failed. Please try again.');
-        const code = (errorBody.error?.code as string) ?? undefined;
+        const code = errorObj?.error?.code ?? undefined;
         setServerError(message);
 
         // If server says email exists, focus email

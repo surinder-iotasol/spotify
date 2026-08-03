@@ -44,17 +44,19 @@ function createMockPrisma() {
       })),
     },
     artistProfile: {
-      create: vi.fn(async ({ data }) => ({
-        id: "ap-test-001",
-        userId: data.userId,
-        stageName: data.stageName,
-        bio: data.bio ?? null,
-        genreTags: data.genreTags ?? null,
-        followerCount: data.followerCount,
-        trackCount: data.trackCount,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })),
+      create: vi.fn(async ({ data }) => {
+        return {
+          id: "ap-test-001",
+          userId: data.userId,
+          stageName: data.stageName,
+          bio: data.bio ?? null,
+          genreTags: data.genreTags ?? null,
+          followerCount: data.followerCount,
+          trackCount: data.trackCount,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }),
     },
   };
 

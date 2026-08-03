@@ -1,0 +1,8 @@
+{
+  "status": "RUNNING",
+  "agentPid": 2382673,
+  "currentStoryId": "STORY-auth-003",
+  "lastActivityTimestamp": "2026-08-02T04:44:36Z",
+  "failedAttemptsCount": 1,
+  "lastExitCode": null
+}

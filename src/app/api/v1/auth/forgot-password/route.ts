@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ success: false, error: { code: "VALIDATION_FAILED", message: "Invalid input" }, meta: { timestamp: new Date().toISOString(), requestId: "api" } }, { status: 422 });
 
     const email = parsed.data.email.trim().toLowerCase();
-    await forgotPassword(prisma, email);
+    await forgotPassword(prisma as any, email);
 
     // Always return HTTP 200 regardless of whether user exists — prevents email enumeration
     return NextResponse.json({ success: true, status: 200, code: "OK", message: "If an account exists for that email, a password reset link has been sent." });

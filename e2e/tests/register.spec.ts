@@ -168,19 +168,10 @@ test.describe("Registration Page E2E (STORY-auth-006)", () => {
   /* ------------------------------------------------------------------ */
 
   test("submit button shows loading spinner and disables on submit", async ({ page }) => {
-    // Create a route interceptor for the API
-    await page.route("**/api/v1/auth/register**", async (route) => {
-      // Slow down the response to observe loading state
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      await route.fulfill({
-        status: 201,
-        contentType: "application/json",
-        body: JSON.stringify({
-          success: true,
-          data: { id: "1", email: "user@example.com", displayName: "Test" },
-        }),
-      });
-    });
+    await interceptRegisterResponse(page, 201, {
+      success: true,
+      data: { id: "1", email: "user@example.com", displayName: "Test" },
+    }, 500);
 
     await page.goto(REGISTER_URL);
 
@@ -203,19 +194,12 @@ test.describe("Registration Page E2E (STORY-auth-006)", () => {
   /* ------------------------------------------------------------------ */
 
   test("displays AUTH_EMAIL_EXISTS error for duplicate email", async ({ page }) => {
-    // Create a route interceptor for the API
-    await page.route("**/api/v1/auth/register**", async (route) => {
-      await route.fulfill({
-        status: 409,
-        contentType: "application/json",
-        body: JSON.stringify({
-          success: false,
-          error: {
-            code: "AUTH_EMAIL_EXISTS",
-            message: "An account with this email address is already registered.",
-          },
-        }),
-      });
+    await interceptRegisterResponse(page, 409, {
+      success: false,
+      error: {
+        code: "AUTH_EMAIL_EXISTS",
+        message: "An account with this email address is already registered.",
+      },
     });
 
     await page.goto(REGISTER_URL);
@@ -228,23 +212,16 @@ test.describe("Registration Page E2E (STORY-auth-006)", () => {
     // Submit
     await page.locator('button[type="submit"]').click();
 
-    // Should show error banner — use data-testid to avoid Next.js route announcer conflict
+    // Should show error banner with accessible role
     const alertBanner = page.locator('[data-testid="register-error-banner"]');
     await expect(alertBanner).toBeVisible();
     await expect(alertBanner).toContainText(/already registered/i);
   });
 
   test("shows general server error in accessible banner", async ({ page }) => {
-    // Create a route interceptor for the API
-    await page.route("**/api/v1/auth/register**", async (route) => {
-      await route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({
-          success: false,
-          error: { code: "INTERNAL_ERROR", message: "Internal server error" },
-        }),
-      });
+    await interceptRegisterResponse(page, 500, {
+      success: false,
+      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
     });
 
     await page.goto(REGISTER_URL);

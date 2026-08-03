@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     return new Response(
       JSON.stringify(
         apiErrorResponse(
-          REGISTRATION_ERRORS.INVALID_BODY,
+          REGISTRATION_ERRORS.VALIDATION_FAILED,
           "Invalid or empty request body.",
         ),
       ),

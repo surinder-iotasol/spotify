@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const newPassword = parsed.data.newPassword;
 
     // Look up the user from the token record first
-    const tokenRecord = await prisma.passwordResetToken.findFirst();
+    const tokenRecord = await (prisma as any).passwordResetToken.findFirst();
     if (!tokenRecord) {
       return NextResponse.json({ success: false, error: { code: "INVALID_TOKEN", message: "Invalid or missing password reset token." }, meta: { timestamp: new Date().toISOString(), requestId: "api" } }, { status: 400 });
     }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Update the user's password in DB and invalidate all tokens for this user
     await prisma.user.update({ where: { id: tokenRecord.userId }, data: { passwordHash: newPasswordHash } });
-    await prisma.passwordResetToken.deleteMany({ where: { userId: tokenRecord.userId } });
+    await (prisma as any).passwordResetToken.deleteMany({ where: { userId: tokenRecord.userId } });
 
     // Revoke active session cookies by setting tokenInvalidatedBefore to now
     const invalidatedAt = new Date();

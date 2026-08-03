@@ -27,6 +27,12 @@ import {
   TokenError,
 } from "@/lib/auth";
 import { logRequestBody } from "@/lib/auth/logging";
+import {
+  uploadProfileImage,
+  PROFILE_IMAGE_ERRORS,
+  type ArtistProfileRepository,
+} from "@/services/profileImageUpload";
+import { parseMultipartImage } from "@/middleware/multipartUpload";
 
 /* ------------------------------------------------------------------ */
 /*  Error codes                                                        */
@@ -262,3 +268,135 @@ function extractSessionToken(cookieHeader: string | null): string | null {
 
   return cookies[SESSION_COOKIE_NAME] ?? null;
 }
+
+/* ------------------------------------------------------------------ */
+/*  STORY-profile-003: POST /avatar and /header                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Shared handler for POST /avatar and POST /header.
+ * Uses parseMultipartImage middleware for file validation.
+ */
+async function handleImageUpload(
+  request: NextRequest,
+  uploadType: "avatar" | "header",
+) {
+  const cookieHeader = request.headers.get("cookie");
+  const sessionToken = extractSessionToken(cookieHeader);
+
+  if (!sessionToken) {
+    return new Response(
+      JSON.stringify(
+        apiErrorResponse(
+          "USER_NOT_FOUND",
+          "Unauthenticated. A valid session is required.",
+        ),
+      ),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  let verified: { userId: string; role: string };
+  try {
+    verified = verifyToken(sessionToken);
+  } catch {
+    return new Response(
+      JSON.stringify(
+        apiErrorResponse(
+          "USER_NOT_FOUND",
+          "Session token is invalid or has expired.",
+        ),
+      ),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (verified.role !== "ARTIST") {
+    return new Response(
+      JSON.stringify(
+        apiErrorResponse(
+          "FORBIDDEN_INSUFFICIENT_ROLE",
+          "ARTIST role is required to upload profile images.",
+        ),
+      ),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Use multipart middleware — handles parsing, size (5MB), and MIME validation.
+  // On validation failure, returns 422 response with INVALID_AVATAR_URL / INVALID_HEADER_URL.
+  const fileData = await parseMultipartImage(request, uploadType);
+  if (fileData instanceof Response) {
+    return fileData;
+  }
+
+  const { buffer, mimeType } = fileData;
+
+  try {
+    const result = await uploadProfileImage(
+      buffer,
+      mimeType,
+      uploadType,
+      verified.userId,
+      prisma.artistProfile,
+      storageProvider,
+    );
+
+    return new Response(
+      JSON.stringify(apiSuccessResponse(result)),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "code" in err) {
+      const typedErr = err as Record<string, unknown>;
+      return new Response(
+        JSON.stringify(apiErrorResponse(String(typedErr.code), String(typedErr.message ?? ""))),
+        { status: 422, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    return new Response(
+      JSON.stringify(
+        apiErrorResponse(
+          "INTERNAL_ERROR",
+          "Failed to upload profile image.",
+        ),
+      ),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+
+  if (pathname.endsWith("/avatar")) {
+    return handleImageUpload(request, "avatar");
+  }
+
+  if (pathname.endsWith("/header")) {
+    return handleImageUpload(request, "header");
+  }
+
+  return new Response(
+    JSON.stringify(apiErrorResponse("NOT_FOUND", "Endpoint not found.")),
+    { status: 404, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Storage provider singleton                                         */
+/* ------------------------------------------------------------------ */
+
+import { S3StorageService, type StorageConfig } from "@/lib/storage/storage.service";
+
+const storageConfig: StorageConfig = {
+  bucket: process.env.S3_BUCKET ?? "indie-music-assets",
+  region: process.env.S3_REGION ?? "us-east-1",
+  endpoint: process.env.S3_ENDPOINT ?? "https://s3.amazonaws.com",
+  accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
+  secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
+};
+
+const storageProvider = new S3StorageService(storageConfig);
