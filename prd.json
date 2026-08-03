@@ -830,7 +830,7 @@
         "Integration test calls GET /api/v1/artists/:artistId and verifies response schema, stats accuracy, and 200 HTTP status."
       ],
       "priority": 33,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-role-001",
         "STORY-setup-008"
