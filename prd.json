@@ -874,14 +874,87 @@
         "Integration test posts image files to avatar/header endpoints and asserts HTTP 200 status and updated profile fields."
       ],
       "priority": 35,
+      "passes": true,
+      "dependsOn": [
+        "STORY-profile-002",
+        "STORY-storage-001"
+      ],
+      "notes": "auto-split into 4 sub-stories",
+      "effort": "medium",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-profile-003a",
+      "title": "Add multipart upload middleware for image endpoints",
+      "description": "Create middleware that parses multipart/form-data and extracts the image file with its metadata for avatar and header upload endpoints.",
+      "acceptanceCriteria": [
+        "Middleware parses multipart request and exposes file buffer and metadata.",
+        "Middleware enforces 5MB maximum file size.",
+        "Middleware validates MIME type is image/jpeg, image/png, or image/webp.",
+        "Returns 422 with INVALID_AVATAR_URL or INVALID_HEADER_URL error codes on validation failure."
+      ],
+      "priority": 35.1,
+      "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-profile-002",
         "STORY-storage-001"
       ],
-      "notes": "",
+      "notes": ""
+    },
+    {
+      "id": "STORY-profile-003b",
+      "title": "Implement avatar upload endpoint",
+      "description": "Build POST /api/v1/artist-profile/avatar endpoint that uploads image to storage and updates the artist profile avatarUrl field.",
+      "acceptanceCriteria": [
+        "Endpoint accepts authenticated ARTIST role requests with multipart image.",
+        "Uploads validated image to cloud storage via StorageProvider interface.",
+        "Updates ArtistProfile record with returned HTTPS asset URL in avatarUrl field.",
+        "Returns updated profile payload in JSON envelope with HTTP 200 status."
+      ],
+      "priority": 35.2,
       "effort": "medium",
-      "model": "deepseek"
+      "passes": false,
+      "dependsOn": [
+        "STORY-profile-003a"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "STORY-profile-003c",
+      "title": "Implement header image upload endpoint",
+      "description": "Build POST /api/v1/artist-profile/header endpoint that uploads image to storage and updates the artist profile headerImageUrl field.",
+      "acceptanceCriteria": [
+        "Endpoint accepts authenticated ARTIST role requests with multipart image.",
+        "Uploads validated image to cloud storage via StorageProvider interface.",
+        "Updates ArtistProfile record with returned HTTPS asset URL in headerImageUrl field.",
+        "Returns updated profile payload in JSON envelope with HTTP 200 status."
+      ],
+      "priority": 35.3,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-profile-003b"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "STORY-profile-003d",
+      "title": "Add unit tests for profile image upload service",
+      "description": "Write unit tests covering file type validation, size checking, and storage provider invocation for both avatar and header upload flows.",
+      "acceptanceCriteria": [
+        "Tests cover valid JPEG, PNG, and WebP MIME type acceptance.",
+        "Tests reject non-image MIME types with correct 422 error responses.",
+        "Tests enforce 5MB size limit and reject oversized files.",
+        "Tests mock StorageProvider to verify upload invocation and URL capture."
+      ],
+      "priority": 35.4,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-profile-003c"
+      ],
+      "notes": ""
     },
     {
       "id": "STORY-profile-004",
