@@ -54,8 +54,8 @@ export async function POST(
         followerId: session.userId,
         artistProfileId,
       },
-      update: {}, // No-op: follow already exists (idempotent toggle)
-    });
+      update: {},
+    } as any);
 
     // Increment follower count
     await prisma.artistProfile.update({
