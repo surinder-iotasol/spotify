@@ -1132,7 +1132,7 @@
       ],
       "priority": 40.4,
       "effort": "medium",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-profile-008c"
       ],

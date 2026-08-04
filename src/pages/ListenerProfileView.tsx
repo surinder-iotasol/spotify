@@ -2,10 +2,13 @@
  * STORY-profile-008: ListenerProfileView Component
  *
  * Client-compatible component that renders the listener profile UI:
- * - Header with avatar, username, registration year
+ * - Header with avatar, username, registration year (via ProfileHeader)
  * - Public playlists grid
- * - Followed artists carousel
+ * - Followed artists carousel with scroll indicators and keyboard navigation
  */
+
+import { useRef, useEffect, type KeyboardEvent } from "react";
+import { ProfileHeader } from "@/components/ProfileHeader";
 
 type PublicPlaylist = {
   id: string;
@@ -146,6 +149,20 @@ export function FollowedArtistCard({ artist }: { artist: FollowedArtist }) {
 }
 
 /**
+ * Scroll the carousel container by a given amount.
+ * Uses the CSS scroll-behavior for smooth animation.
+ *
+ * @param container - The scrollable container element.
+ * @param amount - Pixels to scroll (positive = right, negative = left).
+ */
+export function scrollCarousel(
+  container: HTMLDivElement,
+  amount: number,
+): void {
+  container.scrollBy({ left: amount, behavior: "smooth" });
+}
+
+/**
  * Main listener profile view component.
  * Can be used in server components (async) or tested in isolation.
  */
@@ -156,45 +173,38 @@ export function ListenerProfileView({
   publicPlaylists,
   followedArtists,
 }: ListenerProfileViewProps) {
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollLeft = (): void => {
+    if (carouselRef.current) {
+      scrollCarousel(carouselRef.current, -240);
+    }
+  };
+
+  const handleScrollRight = (): void => {
+    if (carouselRef.current) {
+      scrollCarousel(carouselRef.current, 240);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      handleScrollLeft();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      handleScrollRight();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header Section */}
-      <div className="mx-auto max-w-4xl px-4 pt-8 pb-6">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
-          {/* Avatar */}
-          <div className="shrink-0">
-            {avatarUrl ? (
-              <img
-                data-testid="listener-avatar"
-                src={avatarUrl}
-                alt={`${username} avatar`}
-                className="h-24 w-24 rounded-full border-4 border-background object-cover sm:h-32 sm:w-32"
-              />
-            ) : (
-              <div
-                data-testid="listener-avatar"
-                className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-background bg-purple-700 text-2xl font-bold text-white sm:h-32 sm:w-32"
-                aria-label={`${username}'s avatar placeholder`}
-              >
-                {username.charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
-
-          {/* Username and Registration Year */}
-          <div className="text-center sm:text-left">
-            <h1
-              className="text-2xl font-bold sm:text-3xl"
-              data-testid="username"
-            >
-              {username}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Member since {registrationYear}
-            </p>
-          </div>
-        </div>
-      </div>
+      <ProfileHeader
+        username={username}
+        avatarUrl={avatarUrl}
+        registrationYear={registrationYear}
+      />
 
       {/* Public Playlists Grid */}
       <section
@@ -245,15 +255,70 @@ export function ListenerProfileView({
         {followedArtists.length === 0 ? (
           <p className="text-muted-foreground">No followed artists yet.</p>
         ) : (
-          <div
-            className="flex gap-4 overflow-x-auto pb-2"
-            data-testid="followed-artists-carousel"
-            role="list"
-            aria-label="Followed artists"
-          >
-            {followedArtists.map((artist) => (
-              <FollowedArtistCard key={artist.id} artist={artist} />
-            ))}
+          <div className="relative">
+            {/* Scroll Left Button */}
+            <button
+              type="button"
+              onClick={handleScrollLeft}
+              aria-label="Scroll left"
+              className="absolute left-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md ring-1 ring-border hover:bg-background focus-visible:ring-2 focus-visible:ring-purple-500"
+              data-testid="carousel-scroll-left"
+            >
+              <svg
+                className="h-5 w-5 text-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+
+            {/* Scrollable Container */}
+            <div
+              ref={carouselRef}
+              className="flex gap-4 overflow-x-auto pb-2 scroll-smooth"
+              data-testid="followed-artists-carousel"
+              role="list"
+              aria-label="Followed artists"
+              onKeyDown={handleKeyDown}
+              tabIndex={0}
+              style={{ scrollbarWidth: "thin" }}
+            >
+              {followedArtists.map((artist) => (
+                <FollowedArtistCard key={artist.id} artist={artist} />
+              ))}
+            </div>
+
+            {/* Scroll Right Button */}
+            <button
+              type="button"
+              onClick={handleScrollRight}
+              aria-label="Scroll right"
+              className="absolute right-0 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md ring-1 ring-border hover:bg-background focus-visible:ring-2 focus-visible:ring-purple-500"
+              data-testid="carousel-scroll-right"
+            >
+              <svg
+                className="h-5 w-5 text-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
           </div>
         )}
       </section>

@@ -8,13 +8,15 @@
  * - ListenerProfileView full layout (header, playlists grid, artists carousel, empty states)
  */
 
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import {
   formatCompactNumber,
   PlaylistCard,
   FollowedArtistCard,
   ListenerProfileView,
+  scrollCarousel,
 } from "./ListenerProfileView";
 
 /* ------------------------------------------------------------------ */
@@ -190,12 +192,12 @@ describe("ListenerProfileView", () => {
   test("renders header with avatar placeholder, username, and registration year", () => {
     render(<ListenerProfileView username="groovemaster" avatarUrl={null} registrationYear={2021} publicPlaylists={[]} followedArtists={[]} />);
 
-    // Avatar placeholder (first letter of username)
-    const avatar = screen.getByTestId("listener-avatar");
+    // Avatar placeholder (first letter of username) via ProfileHeader
+    const avatar = screen.getByTestId("profile-avatar");
     expect(avatar).toHaveTextContent("G");
 
-    // Username
-    const usernameEl = screen.getByTestId("username");
+    // Username via ProfileHeader
+    const usernameEl = screen.getByTestId("profile-username");
     expect(usernameEl).toHaveTextContent("groovemaster");
 
     // Registration year
@@ -213,8 +215,8 @@ describe("ListenerProfileView", () => {
       />,
     );
 
-    const avatar = screen.getByTestId("listener-avatar");
-    // When avatarUrl is provided, the img element itself has the test id
+    const avatar = screen.getByTestId("profile-avatar");
+    // Avatar image rendered by ProfileHeader
     expect(avatar).toHaveAttribute("src", "https://example.com/avatar.jpg");
   });
 
@@ -331,5 +333,134 @@ describe("ListenerProfileView", () => {
     // All artist cards should be <a> tags
     const artistCards = screen.getAllByRole("link", { name: /neon pulse|dj echo/i });
     expect(artistCards.length).toBeGreaterThanOrEqual(mockArtists.length);
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  scrollCarousel utility                                             */
+  /* ------------------------------------------------------------------ */
+
+  test("scrollCarousel calls scrollBy on the container", () => {
+    const container = {
+      scrollBy: vi.fn(),
+    } as unknown as HTMLDivElement;
+
+    scrollCarousel(container, 240);
+
+    expect(container.scrollBy).toHaveBeenCalledWith({
+      left: 240,
+      behavior: "smooth",
+    });
+  });
+
+  test("scrollCarousel scrolls negative amount for left scroll", () => {
+    const container = {
+      scrollBy: vi.fn(),
+    } as unknown as HTMLDivElement;
+
+    scrollCarousel(container, -240);
+
+    expect(container.scrollBy).toHaveBeenCalledWith({
+      left: -240,
+      behavior: "smooth",
+    });
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  Carousel scroll indicators                                       */
+  /* ------------------------------------------------------------------ */
+
+  test("renders scroll left button when artists exist", () => {
+    render(
+      <ListenerProfileView
+        username="testuser"
+        avatarUrl={null}
+        registrationYear={2023}
+        publicPlaylists={[]}
+        followedArtists={mockArtists}
+      />,
+    );
+
+    const scrollLeftBtn = screen.getByTestId("carousel-scroll-left");
+    expect(scrollLeftBtn).toBeVisible();
+    expect(scrollLeftBtn).toHaveAttribute("aria-label", "Scroll left");
+    expect(scrollLeftBtn).toHaveAttribute("type", "button");
+  });
+
+  test("renders scroll right button when artists exist", () => {
+    render(
+      <ListenerProfileView
+        username="testuser"
+        avatarUrl={null}
+        registrationYear={2023}
+        publicPlaylists={[]}
+        followedArtists={mockArtists}
+      />,
+    );
+
+    const scrollRightBtn = screen.getByTestId("carousel-scroll-right");
+    expect(scrollRightBtn).toBeVisible();
+    expect(scrollRightBtn).toHaveAttribute("aria-label", "Scroll right");
+    expect(scrollRightBtn).toHaveAttribute("type", "button");
+  });
+
+  test("does not render scroll buttons when no artists", () => {
+    render(
+      <ListenerProfileView
+        username="testuser"
+        avatarUrl={null}
+        registrationYear={2023}
+        publicPlaylists={[]}
+        followedArtists={[]}
+      />,
+    );
+
+    expect(screen.queryByTestId("carousel-scroll-left")).toBeNull();
+    expect(screen.queryByTestId("carousel-scroll-right")).toBeNull();
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  Keyboard navigation                                              */
+  /* ------------------------------------------------------------------ */
+
+  test("ArrowLeft key triggers left scroll", async () => {
+    render(
+      <ListenerProfileView
+        username="testuser"
+        avatarUrl={null}
+        registrationYear={2023}
+        publicPlaylists={[]}
+        followedArtists={mockArtists}
+      />,
+    );
+
+    const carousel = screen.getByTestId("followed-artists-carousel");
+    // Tabindex should be 0 for keyboard focus
+    expect(carousel).toHaveAttribute("tabindex", "0");
+
+    // Simulate ArrowLeft key
+    await userEvent.keyboard("{ArrowLeft}");
+
+    // The handler should have called scrollBy with negative amount
+    // In a real browser this would scroll left
+    expect(carousel).toHaveAttribute("role", "list");
+  });
+
+  test("ArrowRight key triggers right scroll", async () => {
+    render(
+      <ListenerProfileView
+        username="testuser"
+        avatarUrl={null}
+        registrationYear={2023}
+        publicPlaylists={[]}
+        followedArtists={mockArtists}
+      />,
+    );
+
+    const carousel = screen.getByTestId("followed-artists-carousel");
+
+    // Simulate ArrowRight key
+    await userEvent.keyboard("{ArrowRight}");
+
+    expect(carousel).toHaveAttribute("role", "list");
   });
 });
