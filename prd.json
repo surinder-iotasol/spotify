@@ -1196,9 +1196,77 @@
       "dependsOn": [
         "STORY-storage-001"
       ],
-      "notes": "auto-split into 5 sub-stories",
+      "notes": "auto-split into 4 sub-stories",
       "effort": "medium",
       "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-002a",
+      "title": "Scaffold audio metadata service with CorruptedAudioError",
+      "description": "Create src/services/audioMetadata.ts with CorruptedAudioError class and extractAudioMetadata function signature accepting StorageProvider and file key.",
+      "acceptanceCriteria": [
+        "src/services/audioMetadata.ts exports CorruptedAudioError as a typed Error subclass.",
+        "extractAudioMetadata function accepts a StorageProvider instance and file key, returning a Promise<AudioMetadata>.",
+        "CorruptedAudioError carries a message describing the corruption reason."
+      ],
+      "priority": 42.1,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-storage-001"
+      ],
+      "notes": "Creates the service skeleton that the existing test file expects to import."
+    },
+    {
+      "id": "STORY-track-002b",
+      "title": "Implement MP3 header binary parsing",
+      "description": "Add MP3 header parsing to extractAudioMetadata. Reads header bytes via StorageProvider.readHeaderBytes, decodes MP3 frame sync, and extracts duration, bitrate, sample rate, and channel count.",
+      "acceptanceCriteria": [
+        "Parses valid MP3 headers and returns precise duration in float seconds.",
+        "Extracts bitrate, sample rate, and channel topology from MP3 frame headers.",
+        "Throws CorruptedAudioError when MP3 sync word is missing or header is truncated."
+      ],
+      "priority": 42.2,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002a"
+      ],
+      "notes": "Focused on MP3-only (ID3v2 + MPEG frame headers). WAV handling is separate."
+    },
+    {
+      "id": "STORY-track-002c",
+      "title": "Implement WAV header parsing and MIME type verification",
+      "description": "Add WAV RIFF header parsing to extract audio metadata and verify container format matches the declared MIME type (MP3 or WAV).",
+      "acceptanceCriteria": [
+        "Parses WAV RIFF/fmt chunks to extract duration, sample rate, bit depth, and channel count.",
+        "Verifies container format matches declared MIME type, throwing CorruptedAudioError on mismatch.",
+        "Throws CorruptedAudioError when WAV header is unparseable or incomplete."
+      ],
+      "priority": 42.3,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002b"
+      ],
+      "notes": "Handles WAV format and cross-format MIME type validation."
+    },
+    {
+      "id": "STORY-track-002d",
+      "title": "Complete unit tests for audio metadata extraction",
+      "description": "Fill out src/services/audioMetadata.test.ts with comprehensive unit tests for MP3 parsing, WAV parsing, corrupted file detection, and MIME type mismatch scenarios.",
+      "acceptanceCriteria": [
+        "Tests cover valid MP3 header parsing with hex-represented binary data.",
+        "Tests cover valid WAV header parsing and MIME type match/mismatch detection.",
+        "Tests verify CorruptedAudioError is thrown for truncated, empty, and unknown-format files."
+      ],
+      "priority": 42.4,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002c"
+      ],
+      "notes": "Uses existing test file and mock StorageProvider. No integration test against real files required per constraint."
     },
     {
       "id": "STORY-track-002a",
