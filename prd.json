@@ -1192,13 +1192,94 @@
         "Integration test executes metadata extraction against sample audio files in local test storage."
       ],
       "priority": 42,
+      "passes": true,
+      "dependsOn": [
+        "STORY-storage-001"
+      ],
+      "notes": "auto-split into 5 sub-stories",
+      "effort": "medium",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-002a",
+      "title": "Create CorruptedAudioError class and metadata type definitions",
+      "description": "Define the CorruptedAudioError typed error class and the AudioMetadataInfo type used by all downstream header parsers.",
+      "acceptanceCriteria": [
+        "src/services/audioMetadata.ts exports CorruptedAudioError class extending Error with fileKey and reason fields.",
+        "src/services/audioMetadata.ts exports AudioMetadataInfo type with duration, bitrate, sampleRate, channels, codec, and durationMs fields."
+      ],
+      "priority": 42.1,
+      "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-storage-001"
       ],
-      "notes": "",
+      "notes": ""
+    },
+    {
+      "id": "STORY-track-002b",
+      "title": "Implement WAV binary header parser",
+      "description": "Parse WAV binary headers to extract sample rate, channel count, bitrate, and duration from the fmt and data chunks.",
+      "acceptanceCriteria": [
+        "extracts sampleRate, channelCount, and bitrate from the WAV fmt chunk.",
+        "calculates precise duration in float seconds from the data chunk size and format params."
+      ],
+      "priority": 42.2,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002a"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "STORY-track-002c",
+      "title": "Implement MP3 binary header parser",
+      "description": "Parse MP3 ID3 and frame headers to extract bitrate, sample rate, channel mode, and duration from MPEG frame analysis.",
+      "acceptanceCriteria": [
+        "detects MP3 frame sync and extracts bitrate, sample rate, and channel mode from the header.",
+        "calculates duration in float seconds from frame count and frame size."
+      ],
+      "priority": 42.3,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002a"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "STORY-track-002d",
+      "title": "Implement extractAudioMetadata function with format verification",
+      "description": "Assemble the main extractAudioMetadata function that reads header bytes from StorageProvider, delegates to codec parsers, verifies container format matches declared MIME type, and throws CorruptedAudioError on failure.",
+      "acceptanceCriteria": [
+        "reads initial audio binary header bytes via StorageProvider.readHeaderBytes interface.",
+        "verifies container format matches declared MIME type (MP3 or WAV) and throws CorruptedAudioError for corrupted or spoofed files."
+      ],
+      "priority": 42.4,
       "effort": "medium",
-      "model": "deepseek"
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002b",
+        "STORY-track-002c"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "STORY-track-002e",
+      "title": "Write unit tests for audio metadata extraction",
+      "description": "Add comprehensive unit tests covering valid MP3 and WAV header parsing, corrupted file detection, and format mismatch scenarios.",
+      "acceptanceCriteria": [
+        "Unit tests in src/services/audioMetadata.test.ts cover valid MP3 and WAV header parsing.",
+        "Tests include corrupted file detection and format mismatch verification scenarios."
+      ],
+      "priority": 42.5,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002d"
+      ],
+      "notes": ""
     },
     {
       "id": "STORY-track-003",
