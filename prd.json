@@ -1057,13 +1057,104 @@
         "Playwright spec in e2e/tests/listener-profile.spec.ts tests loading a listener profile page and clicking a public playlist card."
       ],
       "priority": 40,
+      "passes": true,
+      "dependsOn": [
+        "STORY-profile-004",
+        "STORY-setup-003"
+      ],
+      "notes": "auto-split into 5 sub-stories",
+      "effort": "medium",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-profile-008a",
+      "title": "Scaffold Listener Profile page route",
+      "description": "Create src/pages/ListenerProfileView page with routing for /users/[userId]. Fetch user data via the existing GET /api/v1/users/:userId endpoint and display loading and error states.",
+      "acceptanceCriteria": [
+        "Page renders at /users/[userId] with loading skeleton while data fetches.",
+        "Error state displays when API returns a non-200 response.",
+        "Unit test in src/pages/ListenerProfileView.test.tsx verifies page renders with mock user data."
+      ],
+      "priority": 40.1,
+      "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-profile-004",
         "STORY-setup-003"
       ],
       "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-profile-008b",
+      "title": "Implement listener profile header component",
+      "description": "Build a profile header displaying user avatar, username, and registration year. Reuses the profile image upload service for avatar rendering.",
+      "acceptanceCriteria": [
+        "Header renders user avatar from profileImageUrl, username, and registration year.",
+        "Avatar falls back to a default placeholder when no image is available.",
+        "Passes WCAG 2.1 AA with alt text on the avatar image."
+      ],
+      "priority": 40.2,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-profile-008a"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-profile-008c",
+      "title": "Build public playlists grid component",
+      "description": "Create a playlists grid that fetches and displays public playlists for a listener with cover mosaics, titles, and track counts.",
+      "acceptanceCriteria": [
+        "Grid renders playlist cards fetched via the listener profile API for playlists where isPublic is true.",
+        "Each card shows a cover mosaic image, playlist title, and track count.",
+        "Card is clickable and navigates to the playlist detail page on click."
+      ],
+      "priority": 40.3,
       "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-profile-008b"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-profile-008d",
+      "title": "Add followed artists carousel",
+      "description": "Build a horizontal carousel component showing followed artist cards with avatars and names, supporting scroll and keyboard navigation.",
+      "acceptanceCriteria": [
+        "Carousel renders followed artists fetched from the listener profile API.",
+        "Artists display in a horizontally scrollable container with visible scroll indicators.",
+        "Users can navigate the carousel with arrow keys and Tab."
+      ],
+      "priority": 40.4,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-profile-008c"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-profile-008e",
+      "title": "Add e2e tests for listener profile page",
+      "description": "Write Playwright e2e tests for the listener profile page covering loading, playlist card navigation, and carousel interaction.",
+      "acceptanceCriteria": [
+        "Playwright spec in e2e/tests/listener-profile.spec.ts tests loading the profile page.",
+        "Test verifies clicking a public playlist card navigates to the playlist detail.",
+        "Test validates carousel renders and supports horizontal scroll."
+      ],
+      "priority": 40.5,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-profile-008d"
+      ],
+      "notes": "",
       "model": "deepseek"
     },
     {
