@@ -1034,7 +1034,7 @@
         "Playwright spec in e2e/tests/artist-profile-edit.spec.ts covers modifying bio text, selecting avatar image, and saving profile changes."
       ],
       "priority": 39,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-profile-002",
         "STORY-profile-003",
