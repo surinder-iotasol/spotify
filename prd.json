@@ -989,7 +989,7 @@
         "Integration test verifies that querying a suspended artist's profile route returns a standardized 404 error envelope."
       ],
       "priority": 37,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-profile-001",
         "STORY-profile-004"
@@ -1012,7 +1012,7 @@
         "Playwright spec in e2e/tests/artist-profile.spec.ts verifies visiting /artists/[artistId], interacting with play triggers, and sorting discography."
       ],
       "priority": 38,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-profile-001",
         "STORY-setup-003"
