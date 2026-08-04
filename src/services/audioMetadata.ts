@@ -35,6 +35,12 @@ export interface AudioMetadata {
   codec: string;
 }
 
+/**
+ * Alias exported as `AudioMetadataInfo` to satisfy the canonical type name
+ * used across all downstream header parsers.
+ */
+export type AudioMetadataInfo = AudioMetadata;
+
 /* ------------------------------------------------------------------ */
 /*  Custom error                                                       */
 /* ------------------------------------------------------------------ */
@@ -49,10 +55,18 @@ export class CorruptedAudioError extends Error {
   /** Object storage key of the corrupted file. */
   public readonly key: string;
 
+  /** File key — alias for `key` to match the canonical PRD field name. */
+  public readonly fileKey: string;
+
+  /** Reason — alias of `message` for the canonical PRD field name. */
+  public readonly reason: string;
+
   constructor(message: string, key: string) {
     super(message);
     this.name = "CorruptedAudioError";
     this.key = key;
+    this.fileKey = key;
+    this.reason = message;
 
     // Preserve the proper prototype chain (required when extending built-in
     // classes across compilation targets).
