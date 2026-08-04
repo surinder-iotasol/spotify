@@ -1170,7 +1170,7 @@
         "Integration test calls POST /api/v1/tracks/upload-intent with valid payload and asserts response key formats and 200 status."
       ],
       "priority": 41,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-role-004",
         "STORY-storage-002"
