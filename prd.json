@@ -1211,7 +1211,7 @@
       ],
       "priority": 42.1,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-storage-001"
       ],
@@ -1278,7 +1278,7 @@
       ],
       "priority": 42.1,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-storage-001"
       ],
