@@ -15,6 +15,7 @@ import {
   createTrack,
   validateTrackInput,
 } from "@/services/trackRegistration";
+import { KeyNotFoundError } from "@/services/audioMetadata";
 
 /* ------------------------------------------------------------------ */
 /*  Request body shape                                                 */
@@ -131,6 +132,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 201 },
     );
   } catch (err: unknown) {
+    // Handle missing storage key — return HTTP 404.
+    if (err instanceof KeyNotFoundError) {
+      return NextResponse.json(
+        apiErrorResponse(
+          "STORAGE_KEY_NOT_FOUND",
+          `The audio storage key '${err.key}' does not exist.`,
+        ),
+        { status: 404 },
+      );
+    }
+
     // Handle corrupted audio error from the service layer.
     if (
       err instanceof Error &&
