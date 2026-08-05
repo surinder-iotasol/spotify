@@ -63,13 +63,11 @@ function buildWavFile(opts?: {
   channels?: number;
   bitsPerSample?: number;
   dataSize?: number;
-  audioFormat?: number;
 }): Buffer {
   const sampleRate = opts?.sampleRate ?? 44100;
   const channels = opts?.channels ?? 2;
   const bitsPerSample = opts?.bitsPerSample ?? 16;
   const dataSize = opts?.dataSize ?? 44100 * 2; // 1 second at 44100*2*16
-  const audioFormat = opts?.audioFormat ?? 1; // PCM default
 
   const bytesPerSec = sampleRate * channels * (bitsPerSample / 8);
   const blockAlign = channels * (bitsPerSample / 8);
@@ -88,7 +86,7 @@ function buildWavFile(opts?: {
   // fmt chunk
   buf.write('fmt ', off); off += 4;
   buf.writeUInt32LE(fmtChunkSize, off); off += 4;
-  buf.writeUInt16LE(audioFormat, off); off += 2;
+  buf.writeUInt16LE(1, off); off += 2; // PCM
   buf.writeUInt16LE(channels, off); off += 2;
   buf.writeUInt32LE(sampleRate, off); off += 4;
   buf.writeUInt32LE(bytesPerSec, off); off += 4;
