@@ -1272,7 +1272,7 @@
       ],
       "priority": 650.2,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-002ba"
       ],
