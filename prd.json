@@ -1218,7 +1218,7 @@
         "src/services/audioMetadata.ts exports CorruptedAudioError class extending Error with fileKey and reason fields.",
         "src/services/audioMetadata.ts exports AudioMetadataInfo type with duration, bitrate, sampleRate, channels, codec, and durationMs fields."
       ],
-      "priority": 640,
+      "priority": 670,
       "effort": "low",
       "passes": true,
       "dependsOn": [
@@ -1235,7 +1235,7 @@
         "extracts sampleRate, channelCount, and bitrate from the WAV fmt chunk.",
         "calculates precise duration in float seconds from the data chunk size and format params."
       ],
-      "priority": 650,
+      "priority": 680,
       "effort": "low",
       "passes": true,
       "dependsOn": [
@@ -1253,13 +1253,14 @@
         "identifies PCM format via wFormatTag and returns AudioMetadata with format='WAV'",
         "throws CorruptedAudioError for missing RIFF magic, missing WAVE type, or truncated fmt chunk"
       ],
-      "priority": 650.1,
+      "priority": 620,
       "effort": "low",
       "passes": true,
       "dependsOn": [
         "STORY-track-002a"
       ],
-      "notes": "Reads RIFF/WAVE magic, then iterates chunks to find fmt chunk. Uses readUInt32LE/readUInt16LE."
+      "notes": "Reads RIFF/WAVE magic, then iterates chunks to find fmt chunk. Uses readUInt32LE/readUInt16LE.",
+      "model": "sonnet"
     },
     {
       "id": "STORY-track-002bb",
@@ -1270,13 +1271,14 @@
         "handles both 8-bit and 16-bit PCM correctly with proper bytes-per-sample divisor",
         "throws CorruptedAudioError when data chunk is missing from WAV file"
       ],
-      "priority": 650.2,
+      "priority": 630,
       "effort": "low",
       "passes": true,
       "dependsOn": [
         "STORY-track-002ba"
       ],
-      "notes": "Duration = dataSize / (sampleRate * channels * bitsPerSample / 8). Bits per sample stored in fmt chunk."
+      "notes": "Duration = dataSize / (sampleRate * channels * bitsPerSample / 8). Bits per sample stored in fmt chunk.",
+      "model": "sonnet"
     },
     {
       "id": "STORY-track-002bc",
@@ -1287,13 +1289,44 @@
         "tests error cases: missing fmt chunk, missing data chunk, non-PCM format",
         "tests boundary values: mono vs stereo, 8-bit vs 16-bit vs 24-bit PCM"
       ],
-      "priority": 650.3,
+      "priority": 640,
+      "effort": "low",
+      "passes": true,
+      "dependsOn": [
+        "STORY-track-002bb"
+      ],
+      "notes": "auto-split into 2 sub-stories",
+      "model": "sonnet"
+    },
+    {
+      "id": "STORY-track-002bca",
+      "title": "Add missing data chunk test for WAV parsing",
+      "description": "Add error case test for WAV files with fmt chunk but no data chunk to parseWavHeader.",
+      "acceptanceCriteria": [
+        "parseWavHeader throws CorruptedAudioError when WAV has fmt chunk but no data chunk follows"
+      ],
+      "priority": 640.1,
       "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-track-002bb"
       ],
-      "notes": "Helper buildWavFile already exists in test file. Extends with fmt/data chunk error cases."
+      "notes": "Minimal test addition in audio-metadata.test.ts buildWavFile helper already supports building WAV buffers."
+    },
+    {
+      "id": "STORY-track-002bcb",
+      "title": "Add non-PCM WAV format error test",
+      "description": "Add error case test for WAV files with non-PCM audio format to parseWavHeader.",
+      "acceptanceCriteria": [
+        "parseWavHeader throws CorruptedAudioError when WAV has non-PCM audio format (audioFormat != 1)"
+      ],
+      "priority": 640.2,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-002bca"
+      ],
+      "notes": "Tests the audioFormat !== 1 guard already in parseWavHeader. Build helper needs small addition for audioFormat param."
     },
     {
       "id": "STORY-track-002c",
@@ -1303,7 +1336,7 @@
         "detects MP3 frame sync and extracts bitrate, sample rate, and channel mode from the header.",
         "calculates duration in float seconds from frame count and frame size."
       ],
-      "priority": 660,
+      "priority": 690,
       "effort": "low",
       "passes": false,
       "dependsOn": [
@@ -1320,7 +1353,7 @@
         "reads initial audio binary header bytes via StorageProvider.readHeaderBytes interface.",
         "verifies container format matches declared MIME type (MP3 or WAV) and throws CorruptedAudioError for corrupted or spoofed files."
       ],
-      "priority": 670,
+      "priority": 700,
       "effort": "medium",
       "passes": false,
       "dependsOn": [
@@ -1338,7 +1371,7 @@
         "src/services/audioMetadata.ts exports CorruptedAudioError class extending Error with fileKey and reason fields.",
         "src/services/audioMetadata.ts exports AudioMetadataInfo type with duration, bitrate, sampleRate, channels, codec, and durationMs fields."
       ],
-      "priority": 640,
+      "priority": 670,
       "effort": "low",
       "passes": true,
       "dependsOn": [
@@ -1355,7 +1388,7 @@
         "extracts sampleRate, channelCount, and bitrate from the WAV fmt chunk.",
         "calculates precise duration in float seconds from the data chunk size and format params."
       ],
-      "priority": 650,
+      "priority": 680,
       "effort": "low",
       "passes": true,
       "dependsOn": [
@@ -1372,7 +1405,7 @@
         "detects MP3 frame sync and extracts bitrate, sample rate, and channel mode from the header.",
         "calculates duration in float seconds from frame count and frame size."
       ],
-      "priority": 660,
+      "priority": 690,
       "effort": "low",
       "passes": false,
       "dependsOn": [
@@ -1389,7 +1422,7 @@
         "reads initial audio binary header bytes via StorageProvider.readHeaderBytes interface.",
         "verifies container format matches declared MIME type (MP3 or WAV) and throws CorruptedAudioError for corrupted or spoofed files."
       ],
-      "priority": 670,
+      "priority": 700,
       "effort": "medium",
       "passes": false,
       "dependsOn": [
@@ -1407,7 +1440,7 @@
         "Unit tests in src/services/audioMetadata.test.ts cover valid MP3 and WAV header parsing.",
         "Tests include corrupted file detection and format mismatch verification scenarios."
       ],
-      "priority": 680,
+      "priority": 710,
       "effort": "medium",
       "passes": false,
       "dependsOn": [
@@ -1429,7 +1462,7 @@
         "Unit tests in src/services/trackRegistration.test.ts verify auto-live assignment, default cover art fallback, and metadata persistence.",
         "Integration test calls POST /api/v1/tracks with valid keys and asserts 201 status and DB Track record."
       ],
-      "priority": 690,
+      "priority": 720,
       "passes": false,
       "dependsOn": [
         "STORY-track-001",
@@ -1450,7 +1483,7 @@
         "Unit tests in src/services/genreIndexing.test.ts cover taxonomy validation and indexing event payload creation.",
         "Integration test verifies that creating a track fires the expected search indexing event trigger."
       ],
-      "priority": 700,
+      "priority": 730,
       "passes": false,
       "dependsOn": [
         "STORY-track-003"
@@ -1471,7 +1504,7 @@
         "Unit tests in src/services/uploadErrorRecovery.test.ts verify storage deletion invocation and error envelope generation.",
         "Integration test simulates corrupted file header and verifies storage cleanup execution and 422 response."
       ],
-      "priority": 710,
+      "priority": 740,
       "passes": false,
       "dependsOn": [
         "STORY-track-003",
@@ -1494,7 +1527,7 @@
         "Unit tests in src/components/TrackUploadWizard.test.tsx test file drag-and-drop validation, upload progress calculation, and form submission.",
         "Playwright spec in e2e/tests/track-upload.spec.ts tests picking an MP3 file, filling metadata, uploading, and verifying redirect to published track view."
       ],
-      "priority": 720,
+      "priority": 750,
       "passes": false,
       "dependsOn": [
         "STORY-track-001",
@@ -1519,7 +1552,7 @@
         "Admin-initiated metadata edits emit an immutable entry to AuditLog capturing admin user ID, track ID, and modified fields.",
         "Integration tests in tests/api/track-update.test.ts call PATCH /api/v1/tracks/[id] with valid owner payload (asserts 200), immutable payload (asserts 422), unauthorized user (asserts 403), and non-existent track (asserts 404)."
       ],
-      "priority": 730,
+      "priority": 760,
       "passes": false,
       "dependsOn": [
         "STORY-setup-006",
@@ -1541,7 +1574,7 @@
         "Storage provider deletion failures are logged as structured errors and retried without blocking or failing the HTTP PATCH response.",
         "Unit tests in tests/unit/cover-art-cleanup.test.ts verify that StorageProvider.deleteFile() is called with the exact previous key when coverImageUrl changes."
       ],
-      "priority": 740,
+      "priority": 770,
       "passes": false,
       "dependsOn": [
         "STORY-track-007",
@@ -1563,7 +1596,7 @@
         "Admin track soft-deletion emits an entry to AuditLog capturing admin ID, track ID, and timestamp.",
         "Integration tests in tests/api/track-delete.test.ts verify soft-archival database state, 404 response on streaming archived track, and 403 on unauthorized deletion."
       ],
-      "priority": 750,
+      "priority": 780,
       "passes": false,
       "dependsOn": [
         "STORY-setup-006",
@@ -1587,7 +1620,7 @@
         "Invalidates cache tags for affected playlists and artist catalog listings.",
         "Integration tests in tests/services/playlist-cascade.test.ts assert PlaylistTrack purge, position re-indexing without gaps, and accurate trackCount decrements on Playlist and ArtistProfile."
       ],
-      "priority": 760,
+      "priority": 790,
       "passes": false,
       "dependsOn": [
         "STORY-track-009"
@@ -1608,7 +1641,7 @@
         "Preserves database record in archived state for analytical history while confirming storage objects are purged.",
         "Unit and integration tests in tests/jobs/track-media-purge.test.ts verify worker invocation, target storage key deletion calls, and error retry handling."
       ],
-      "priority": 770,
+      "priority": 800,
       "passes": false,
       "dependsOn": [
         "STORY-track-009",
@@ -1630,7 +1663,7 @@
         "Modal and form elements satisfy WCAG 2.1 AA accessibility guidelines (keyboard focus trapping, ARIA dialog labels, visible focus rings).",
         "Playwright spec in e2e/tests/artist-catalog-edit.spec.ts verifies opening edit modal, modifying title and genre, submitting valid form, and asserting updated UI listing."
       ],
-      "priority": 780,
+      "priority": 810,
       "passes": false,
       "dependsOn": [
         "STORY-track-007",
@@ -1652,7 +1685,7 @@
         "Confirmation dialog and player alerts comply with WCAG 2.1 AA keyboard accessibility and screen reader announcement standards (aria-live).",
         "Playwright spec in e2e/tests/artist-catalog-delete.spec.ts covers deletion dialog confirmation, catalog item removal, and player toast notification trigger on active track deletion."
       ],
-      "priority": 790,
+      "priority": 820,
       "passes": false,
       "dependsOn": [
         "STORY-track-009",
@@ -1675,7 +1708,7 @@
         "Unit tests in context/AudioPlayerContext.test.tsx verify state transitions, event subscriptions, and sessionStorage serialization.",
         "Playwright spec in e2e/tests/player-persistence.spec.ts verifies player state remains active across client-side page route navigation."
       ],
-      "priority": 800,
+      "priority": 830,
       "passes": false,
       "dependsOn": [
         "STORY-setup-002",
@@ -1698,7 +1731,7 @@
         "Disabling shuffle restores activeQueue to originalQueue while matching currentIndex to the currently active track.",
         "Unit tests in utils/queueEngine.test.ts cover queue insertion, reordering, Fisher-Yates shuffle integrity, and repeat mode boundary conditions."
       ],
-      "priority": 810,
+      "priority": 840,
       "passes": false,
       "dependsOn": [
         "STORY-player-001"
@@ -1721,7 +1754,7 @@
         "Component unit tests in components/player/AudioPlayerBar.test.tsx verify play/pause toggles, volume scaling, seek events, and error UI states.",
         "Playwright spec in e2e/tests/player-bar.spec.ts verifies audio playback controls and volume persistence."
       ],
-      "priority": 820,
+      "priority": 850,
       "passes": false,
       "dependsOn": [
         "STORY-player-001"
@@ -1743,7 +1776,7 @@
         "Component unit tests in components/player/QueueDrawer.test.tsx verify render list, drag reordering triggers, and clear queue button actions.",
         "Playwright spec in e2e/tests/queue-drawer.spec.ts verifies opening the drawer, reordering items, and removing tracks."
       ],
-      "priority": 830,
+      "priority": 860,
       "passes": false,
       "dependsOn": [
         "STORY-player-002",
@@ -1767,7 +1800,7 @@
         "Unit tests in hooks/useMediaSession.test.tsx and hooks/usePlayerHotkeys.test.tsx cover event binding and input suppression logic.",
         "Playwright spec in e2e/tests/player-accessibility.spec.ts verifies hotkey execution and ARIA slider attributes."
       ],
-      "priority": 840,
+      "priority": 870,
       "passes": false,
       "dependsOn": [
         "STORY-player-001",
@@ -1789,7 +1822,7 @@
         "Unit tests in components/player/GuestAuthInterceptor.test.tsx verify social action interception for guests.",
         "Playwright spec in e2e/tests/guest-playback.spec.ts verifies unauthenticated track playback and auth modal trigger."
       ],
-      "priority": 850,
+      "priority": 880,
       "passes": false,
       "dependsOn": [
         "STORY-player-001",
@@ -1812,7 +1845,7 @@
         "Service unit tests verify calculation of threshold for tracks < 60s and >= 60s and HMAC token signature validity.",
         "Integration test calls POST /api/v1/tracks/:id/play-session with valid trackId and asserts 200 status and PlaySessionResponse body schema."
       ],
-      "priority": 860,
+      "priority": 890,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004",
@@ -1835,7 +1868,7 @@
         "If qualified, returns 200 OK with status 'QUALIFIED' and playCountIncremented: true.",
         "Integration test calls POST /api/v1/tracks/:id/play-beacon with valid token, expired token, early payload, and duplicate play within 60m to assert status codes."
       ],
-      "priority": 870,
+      "priority": 900,
       "passes": false,
       "dependsOn": [
         "STORY-listen-001"
@@ -1856,7 +1889,7 @@
         "Unit tests in services/playCountAggregator.test.tsx verify atomic track counter increments and background worker batch aggregations.",
         "Integration test verifies calling play-beacon increments Track.playCount immediately and ArtistProfile.totalPlays after background worker execution."
       ],
-      "priority": 880,
+      "priority": 910,
       "passes": false,
       "dependsOn": [
         "STORY-listen-002"
@@ -1877,7 +1910,7 @@
         "Unit tests in hooks/useListenThreshold.test.tsx verify accumulation timer logic, pause/mute exclusion, seek handling, and beacon dispatch.",
         "Playwright spec in e2e/tests/listen-threshold.spec.ts verifies playing a track for 30 seconds triggers the play-beacon network call."
       ],
-      "priority": 890,
+      "priority": 920,
       "passes": false,
       "dependsOn": [
         "STORY-player-001",
@@ -1900,7 +1933,7 @@
         "Unit tests in src/services/playlist.service.test.ts cover valid playlist creation and title character validation errors.",
         "Integration test calls POST /api/v1/playlists with valid JWT and asserts 201 Created and response payload structure."
       ],
-      "priority": 900,
+      "priority": 930,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004",
@@ -1923,7 +1956,7 @@
         "Unit tests verify ownership assertion helper with matching and non-matching user IDs.",
         "Integration test asserts PATCH and DELETE endpoints enforce 403 for non-owners and 200 for valid owners."
       ],
-      "priority": 910,
+      "priority": 940,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-001",
@@ -1946,7 +1979,7 @@
         "Unit tests in src/services/playlist-track.service.test.ts cover position recalculations and duration counter updates.",
         "Integration test asserts POST and DELETE track endpoints execute correct DB state changes and response structures."
       ],
-      "priority": 920,
+      "priority": 950,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-002",
@@ -1969,7 +2002,7 @@
         "Unit tests cover edge cases including moving top track to bottom, bottom track to top, and no-op identical position movement.",
         "Integration test calls PUT /api/v1/playlists/:id/tracks/reorder and verifies resulting dense sequential order in database."
       ],
-      "priority": 930,
+      "priority": 960,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-003"
@@ -1990,7 +2023,7 @@
         "Component unit tests cover drag handle rendering and keyboard accessibility menu interactions.",
         "Playwright spec in e2e/tests/playlist-editor.spec.ts verifies drag reordering, position prompt modal, and failure rollback."
       ],
-      "priority": 940,
+      "priority": 970,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-004",
@@ -2011,7 +2044,7 @@
         "Unit tests verify share URL construction from environment domain configuration and playlist ID.",
         "Integration test asserts PATCH /api/v1/playlists/:id/visibility updates isPublic flag in DB and returns 200 OK."
       ],
-      "priority": 950,
+      "priority": 980,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-002"
@@ -2032,7 +2065,7 @@
         "Unit tests in src/services/playlist-access.test.ts verify public vs private permission matrix enforcement.",
         "Integration tests assert GET /api/v1/playlists/:id returns 200 for public/owner requests and 404 for unauthorized private requests."
       ],
-      "priority": 960,
+      "priority": 990,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-006"
@@ -2052,7 +2085,7 @@
         "Unit test verifies OG image composition logic and composite image generation parameters.",
         "Integration test calls GET /api/v1/playlists/:id/og-image and asserts 200 OK with image/png or image/jpeg content type."
       ],
-      "priority": 970,
+      "priority": 1000,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-007"
@@ -2073,7 +2106,7 @@
         "Component unit tests verify playlist metadata rendering and queue initialization hooks.",
         "Playwright spec in e2e/tests/public-playlist.spec.ts verifies unauthenticated playlist viewing and audio playback triggering."
       ],
-      "priority": 980,
+      "priority": 1010,
       "passes": false,
       "dependsOn": [
         "STORY-playlist-007",
@@ -2094,7 +2127,7 @@
         "Database index setup script initializes text and filter indexes without error or service disruption.",
         "Unit tests verify index schema definitions and compound key configurations against target database specifications."
       ],
-      "priority": 990,
+      "priority": 1020,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004"
@@ -2117,7 +2150,7 @@
         "Integration test calls GET /api/v1/search with valid search queries and asserts 200 OK status, grouped payload structure, and correct filtering/sorting behavior.",
         "Unit tests in search.service.test.ts cover query sanitization, tokenization, stop-word removal, and score tie-breaking logic."
       ],
-      "priority": 1000,
+      "priority": 1030,
       "passes": false,
       "dependsOn": [
         "STORY-search-001",
@@ -2140,7 +2173,7 @@
         "Unit tests verify input debounce timing, overlay visibility state triggers, and query length threshold gating.",
         "Playwright spec in e2e/tests/search-bar.spec.ts verifies user typing, debounced suggestion popup, keyboard navigation, and selection click navigation."
       ],
-      "priority": 1010,
+      "priority": 1040,
       "passes": false,
       "dependsOn": [
         "STORY-search-002",
@@ -2163,7 +2196,7 @@
         "Unit tests cover URL query parameter synchronization, tab switching, and filter state updates.",
         "Playwright spec in e2e/tests/search-page.spec.ts verifies entity tab switching, genre filter application, sort order changes, and playing a track directly from search results."
       ],
-      "priority": 1020,
+      "priority": 1050,
       "passes": false,
       "dependsOn": [
         "STORY-search-002",
@@ -2188,7 +2221,7 @@
         "All timestamp fields (Like.createdAt) are returned in UTC ISO-8601 format. (Constraint 0)",
         "Integration test calls POST and DELETE endpoints with valid session tokens and asserts database counter mutations and idempotent responses."
       ],
-      "priority": 1030,
+      "priority": 1060,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004",
@@ -2213,7 +2246,7 @@
         "All returned track timestamps conform to UTC ISO-8601 format. (Constraint 0)",
         "Integration test verifies authenticating as a user with liked tracks, validating pagination offset limits and correct sorting order."
       ],
-      "priority": 1040,
+      "priority": 1070,
       "passes": false,
       "dependsOn": [
         "STORY-like-001",
@@ -2233,7 +2266,7 @@
         "Track list queries execute batched Like lookup queries indexed by [userId, trackId] to prevent N+1 database queries.",
         "Integration test verifies that track listing endpoints return accurate hasLiked boolean flags for authenticated vs unauthenticated session tokens."
       ],
-      "priority": 1050,
+      "priority": 1080,
       "passes": false,
       "dependsOn": [
         "STORY-like-001",
@@ -2254,7 +2287,7 @@
         "Component supports interactive states (hover, focus, active, loading) conforming to design system tokens and WCAG 2.1 AA accessibility guidelines with aria-label attributes. (sec-026, Constraint 5)",
         "Unit tests in components/like-button.test.tsx verify optimistic state toggling, rollback handling on API failure, and accessibility attributes."
       ],
-      "priority": 1060,
+      "priority": 1090,
       "passes": false,
       "dependsOn": [
         "STORY-like-001",
@@ -2275,7 +2308,7 @@
         "Page layout is responsive across desktop, tablet, and mobile viewports down to 375px width. (sec-024, sec-026)",
         "Playwright spec in e2e/tests/liked-tracks.spec.ts covers navigating to Liked Tracks page, triggering Play All, unliking a track, and verifying queue population."
       ],
-      "priority": 1070,
+      "priority": 1100,
       "passes": false,
       "dependsOn": [
         "STORY-like-002",
@@ -2299,7 +2332,7 @@
         "Follow write endpoints enforce rate limiting policy per sec-025.",
         "Unit tests cover follow validation logic and transactional counter increments, while integration tests verify POST and DELETE /api/v1/artists/:artistId/follow HTTP responses and status codes."
       ],
-      "priority": 1080,
+      "priority": 1110,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004",
@@ -2322,7 +2355,7 @@
         "API endpoint responds within SLA targets per sec-024 performance guidelines.",
         "Unit tests cover count drift reconciliation logic and integration tests assert GET /api/v1/artists/:artistId/follow-status response structure and unauthenticated 401 status."
       ],
-      "priority": 1090,
+      "priority": 1120,
       "passes": false,
       "dependsOn": [
         "STORY-follow-001"
@@ -2343,7 +2376,7 @@
         "Supports limit query parameter defaulted to 20 with a hard maximum cap of 100 items per page.",
         "Unit tests cover feed query building and pagination cursor logic, and integration tests verify GET /api/v1/feed/activity filtering, ordering, and payload schema."
       ],
-      "priority": 1100,
+      "priority": 1130,
       "passes": false,
       "dependsOn": [
         "STORY-follow-001",
@@ -2365,7 +2398,7 @@
         "Button states and focus styles comply with WCAG 2.1 AA keyboard and screen reader accessibility guidelines per constraint 5 and sec-024.",
         "Component unit tests verify optimistic state mutations and error rollbacks, while Playwright spec in e2e/tests/follow-button.spec.ts tests user interaction, optimistic update, and network error recovery."
       ],
-      "priority": 1110,
+      "priority": 1140,
       "passes": false,
       "dependsOn": [
         "STORY-follow-001",
@@ -2388,7 +2421,7 @@
         "Implements infinite scrolling via IntersectionObserver cursor fetch adhering to design system patterns per sec-026.",
         "Playwright spec in e2e/tests/activity-feed.spec.ts covers authenticated page access, infinite scroll loading, player playback integration, and empty state rendering."
       ],
-      "priority": 1120,
+      "priority": 1150,
       "passes": false,
       "dependsOn": [
         "STORY-follow-003",
@@ -2410,7 +2443,7 @@
         "Calculated affinity vector is cached in memory per request lifecycle to avoid redundant database reads.",
         "Unit tests in src/services/recommendation-affinity.test.ts cover affinity score calculation, 90-day cutoff boundary filtering, and weight aggregation."
       ],
-      "priority": 1130,
+      "priority": 1160,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004",
@@ -2432,7 +2465,7 @@
         "applyArtistDiversity algorithm re-orders candidate tracks using a minimum buffer of 2 positions to prevent identical artist IDs from appearing consecutively.",
         "Unit tests in src/services/recommendation-interleaving.test.ts cover played track exclusion, soft-hidden filtering, and artist interleaving edge cases."
       ],
-      "priority": 1140,
+      "priority": 1170,
       "passes": false,
       "dependsOn": [
         "STORY-recommend-001"
@@ -2452,7 +2485,7 @@
         "Falls back to the 50 most recently published live tracks if genre aggregates are empty or sparse.",
         "Unit tests in src/services/recommendation-coldstart.test.ts cover guest fallback, empty history handling, and trending velocity calculations."
       ],
-      "priority": 1150,
+      "priority": 1180,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004"
@@ -2473,7 +2506,7 @@
         "Endpoint response latency resolves within sub-50ms under baseline load.",
         "Integration test calls GET /api/v1/recommendations with valid session cookie and guest headers, asserting response status 200 and schema validity."
       ],
-      "priority": 1160,
+      "priority": 1190,
       "passes": false,
       "dependsOn": [
         "STORY-recommend-001",
@@ -2497,7 +2530,7 @@
         "Interactive elements (genre pills, play buttons) comply with WCAG 2.1 AA keyboard navigation and focus ring standards.",
         "Playwright spec in e2e/tests/recommendations.spec.ts verifies feed rendering, genre pill filtering, cold-start indicator display, and track playback trigger."
       ],
-      "priority": 1170,
+      "priority": 1200,
       "passes": false,
       "dependsOn": [
         "STORY-recommend-004",
@@ -2521,7 +2554,7 @@
         "Timestamps in the created Report entity are stored in UTC ISO-8601 format per constraint 0.",
         "Integration test in tests/api/reports.test.ts verifies successful creation, 404 missing track, 409 duplicate submission, and 429 rate limit enforcement."
       ],
-      "priority": 1180,
+      "priority": 1210,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004",
@@ -2545,7 +2578,7 @@
         "Styled using dark-mode HSL design tokens and shadcn/ui Dialog/Select components per sec-026.",
         "Unit tests in components/ReportModal.test.tsx cover form validation and state transitions; Playwright spec in e2e/tests/report-modal.spec.ts verifies opening, submitting, auto-dismissing, and error alerts."
       ],
-      "priority": 1190,
+      "priority": 1220,
       "passes": false,
       "dependsOn": [
         "STORY-report-001",
@@ -2567,7 +2600,7 @@
         "Computes slaRemainingSeconds (172800 seconds minus elapsed time since createdAt) and sets isSlaBreached = true if slaRemainingSeconds <= 0.",
         "Integration test in tests/api/admin-reports.test.ts asserts 401/403 guards for unauthorized users, 200 OK payload schema, pagination parameters, and SLA calculation accuracy."
       ],
-      "priority": 1200,
+      "priority": 1230,
       "passes": false,
       "dependsOn": [
         "STORY-report-001",
@@ -2590,7 +2623,7 @@
         "Both endpoints write an immutable AuditLog entry recording adminId, action (REPORT_APPROVED_UNPUBLISH or REPORT_REJECTED_DISMISS), targetEntityId, adminNotes, and duration in milliseconds per sec-025.",
         "Integration test in tests/api/admin-takedown.test.ts verifies atomic status transitions, AuditLog creation, and presigned stream URL HTTP 404 rejection post-takedown."
       ],
-      "priority": 1210,
+      "priority": 1240,
       "passes": false,
       "dependsOn": [
         "STORY-moderation-001",
@@ -2614,7 +2647,7 @@
         "Page responsive layout supports viewports down to desktop/tablet screens using design system tokens per sec-026.",
         "Unit test in pages/admin/moderation.test.tsx verifies table filtering and badge rendering; Playwright spec in e2e/tests/admin-moderation.spec.ts tests complete report approval and rejection workflows."
       ],
-      "priority": 1220,
+      "priority": 1250,
       "passes": false,
       "dependsOn": [
         "STORY-moderation-002",
@@ -2636,7 +2669,7 @@
         "Passwords and password hashes are strictly excluded from response payloads per constraint 4.",
         "Integration test in tests/api/admin-users.test.ts verifies pagination, filtering by role/status, partial email search matching, and admin permission enforcement."
       ],
-      "priority": 1230,
+      "priority": 1260,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004",
@@ -2659,7 +2692,7 @@
         "Writes a synchronous AuditLog record containing action (USER_SUSPENDED, USER_BANNED, or USER_REINSTATED), adminId, targetUserId, previousStatus, newStatus, reason, and metadata per sec-025.",
         "Integration test in tests/api/admin-user-status.test.ts verifies status transition, 403 on admin targeting, 422 on missing reason, AuditLog creation, and token invalidation timestamp update."
       ],
-      "priority": 1240,
+      "priority": 1270,
       "passes": false,
       "dependsOn": [
         "STORY-usermod-001",
@@ -2682,7 +2715,7 @@
         "Retains user records, audio files, and playlist definitions indefinitely in database and cloud storage without hard deletion.",
         "Unit tests in services/visibilityEngine.test.ts and integration tests in tests/api/soft-hide.test.ts verify atomic flag updates, query filtering, and preservation of DMCA takedown states during reinstatement."
       ],
-      "priority": 1250,
+      "priority": 1280,
       "passes": false,
       "dependsOn": [
         "STORY-usermod-002",
@@ -2706,7 +2739,7 @@
         "Responsive design and dark-mode styling built using shadcn/ui Table, Dialog, Select, and Badge components per sec-026.",
         "Unit tests in pages/admin/users.test.tsx verify table filtering and modal validation; Playwright spec in e2e/tests/admin-users.spec.ts tests user status updates and table search."
       ],
-      "priority": 1260,
+      "priority": 1290,
       "passes": false,
       "dependsOn": [
         "STORY-usermod-003",
@@ -2728,7 +2761,7 @@
         "Unit tests in services/analyticsAggregation.test.ts verify metric calculation logic and idempotency when handling existing snapshot dates.",
         "Integration test in tests/api/cronAggregation.test.ts executes GET /api/v1/cron/aggregate-metrics with secret CRON auth header and verifies snapshot record persistence."
       ],
-      "priority": 1270,
+      "priority": 1300,
       "passes": false,
       "dependsOn": [
         "STORY-setup-004"
@@ -2749,7 +2782,7 @@
         "Unit tests in services/analyticsSummary.test.ts verify growth percentage calculation algorithms including zero-division fallback edge cases.",
         "Integration tests in tests/api/adminSummaryAnalytics.test.ts assert GET /api/v1/admin/analytics/summary returns 200 with valid data envelope for Admin tokens and 403 for non-admin tokens."
       ],
-      "priority": 1280,
+      "priority": 1310,
       "passes": false,
       "dependsOn": [
         "STORY-setup-007"
@@ -2769,7 +2802,7 @@
         "Unit tests in services/storageMetrics.test.ts verify correct byte aggregation logic across tracks and image resources.",
         "Integration test in tests/api/adminStorageAnalytics.test.ts asserts GET /api/v1/admin/analytics/storage returns 200 OK with expected JSON structure for authenticated Admin sessions."
       ],
-      "priority": 1290,
+      "priority": 1320,
       "passes": false,
       "dependsOn": [
         "STORY-setup-007"
@@ -2790,7 +2823,7 @@
         "Unit tests in services/timeSeriesAnalytics.test.ts verify interval grouping and date range query filter construction.",
         "Integration tests in tests/api/adminTimeSeriesAnalytics.test.ts verify GET /api/v1/admin/analytics/time-series returns 200 with time-series data points spanning requested window."
       ],
-      "priority": 1300,
+      "priority": 1330,
       "passes": false,
       "dependsOn": [
         "STORY-analytics-001"
@@ -2810,7 +2843,7 @@
         "Unit tests in services/moderationAnalytics.test.ts verify average resolution time math and 36-hour SLA warning threshold calculation.",
         "Integration tests in tests/api/adminModerationAnalytics.test.ts assert GET /api/v1/admin/analytics/moderation-stats returns 200 OK with accurate count metrics for Admin users."
       ],
-      "priority": 1310,
+      "priority": 1340,
       "passes": false,
       "dependsOn": [
         "STORY-setup-007"
@@ -2832,7 +2865,7 @@
         "Unit tests in components/admin/AnalyticsDashboard.test.tsx verify metric card formatting, quota alert thresholds, and chart rendering states.",
         "Playwright spec in e2e/tests/admin-analytics.spec.ts verifies dashboard loading for Admin users, interactive time-series window switching, and 403 redirect state for non-admin users."
       ],
-      "priority": 1320,
+      "priority": 1350,
       "passes": false,
       "dependsOn": [
         "STORY-analytics-002",
@@ -2856,7 +2889,7 @@
         "Response headers explicitly include Cache-Control: no-store, must-revalidate to prevent CDN caching of health status.",
         "Integration test calls GET /api/v1/health and asserts HTTP 200 status code and JSON schema validity."
       ],
-      "priority": 1330,
+      "priority": 1360,
       "passes": false,
       "dependsOn": [
         "STORY-setup-008"
@@ -2877,7 +2910,7 @@
         "Containerized application starts cleanly and responds to GET /api/v1/health on port 3000.",
         "Unit tests verify next.config.js exports valid configuration settings."
       ],
-      "priority": 1340,
+      "priority": 1370,
       "passes": false,
       "dependsOn": [
         "STORY-deploy-001"
@@ -2897,7 +2930,7 @@
         "CORS rules expose ETag headers and set MaxAgeSeconds to 3600 for presigned upload caching.",
         "Acceptance validation test verifies syntax and ARN scoping of IAM and CORS JSON policy definitions."
       ],
-      "priority": 1350,
+      "priority": 1380,
       "passes": false,
       "dependsOn": [
         "STORY-deploy-002"
@@ -2916,7 +2949,7 @@
         "Dynamic application routes and API endpoints under /api/v1/* return Cache-Control: no-store, must-revalidate.",
         "Integration tests make requests to static asset paths and API endpoints, verifying correct Cache-Control header values."
       ],
-      "priority": 1360,
+      "priority": 1390,
       "passes": false,
       "dependsOn": [
         "STORY-deploy-001"
@@ -2936,7 +2969,7 @@
         "Script verifies MongoDB collection index creation for User, Track, and AuditLog models.",
         "Integration test executes scripts/db-migrate.sh against a test MongoDB instance and asserts clean exit code 0."
       ],
-      "priority": 1370,
+      "priority": 1400,
       "passes": false,
       "dependsOn": [
         "STORY-deploy-002"
@@ -2958,7 +2991,7 @@
         "Job `ecs-deploy` initiates ECS rolling update and monitors health via GET /api/v1/health over a 180-second evaluation window.",
         "Workflow YAML file syntax is validated clean against GitHub Actions schema guidelines."
       ],
-      "priority": 1380,
+      "priority": 1410,
       "passes": false,
       "dependsOn": [
         "STORY-deploy-005"
