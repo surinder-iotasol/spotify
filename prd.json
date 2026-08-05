@@ -1507,13 +1507,97 @@
         "Integration test simulates corrupted file header and verifies storage cleanup execution and 422 response."
       ],
       "priority": 760,
+      "passes": true,
+      "dependsOn": [
+        "STORY-track-003",
+        "STORY-storage-001"
+      ],
+      "notes": "auto-split into 5 sub-stories",
+      "effort": "medium",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-005a",
+      "title": "Implement storage cleanup on track registration failure",
+      "description": "Wrap track registration logic so that if any error occurs after storage uploads, deleteObject is called on audioStorageKey and coverImageStorageKey to clean up orphaned files.",
+      "acceptanceCriteria": [
+        "On any error after uploads, invokes StorageProvider.deleteObject on audioStorageKey and coverImageStorageKey.",
+        "deleteObject calls on missing keys are tolerated (no unhandled errors)."
+      ],
+      "priority": 760.1,
+      "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-track-003",
         "STORY-storage-001"
       ],
       "notes": "",
-      "effort": "medium",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-005b",
+      "title": "Add 422 and 404 error responses for track registration failures",
+      "description": "Return HTTP 422 with CORRUPTED_AUDIO_FILE code for audio header failures, and HTTP 404 with STORAGE_KEY_NOT_FOUND for missing storage keys.",
+      "acceptanceCriteria": [
+        "HTTP 422 Unprocessable Entity with error code CORRUPTED_AUDIO_FILE for corrupted audio.",
+        "HTTP 404 with STORAGE_KEY_NOT_FOUND for missing storage keys during registration."
+      ],
+      "priority": 760.2,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-005a"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-005c",
+      "title": "Add logging for track registration failures",
+      "description": "Log failure events during track registration with sanitized PII metadata for monitoring, following sister cross-cutting guideline sec-025.",
+      "acceptanceCriteria": [
+        "Logs failed track registration with sanitized PII metadata."
+      ],
+      "priority": 760.3,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-005b"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-005d",
+      "title": "Add unit tests for audio error recovery handlers",
+      "description": "Unit tests in services/trackRegistrationErrorRecovery.test.ts verifying storage deletion invocation and error envelope generation for all failure paths.",
+      "acceptanceCriteria": [
+        "Unit tests verify storage deletion invocation on registration failure.",
+        "Unit tests verify 422 and 404 error envelope generation."
+      ],
+      "priority": 760.4,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-005c"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-005e",
+      "title": "Add integration test for corrupted file upload flow",
+      "description": "Integration test simulates corrupted audio file header and verifies storage cleanup execution, 422 response, and proper error envelope.",
+      "acceptanceCriteria": [
+        "Integration test simulates corrupted file header and verifies storage cleanup and 422 response."
+      ],
+      "priority": 760.5,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-005d"
+      ],
+      "notes": "",
       "model": "deepseek"
     },
     {
