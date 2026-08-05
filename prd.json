@@ -1486,7 +1486,7 @@
         "Integration test verifies that creating a track fires the expected search indexing event trigger."
       ],
       "priority": 750,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-003"
       ],
