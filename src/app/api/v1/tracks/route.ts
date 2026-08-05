@@ -1,42 +1,39 @@
 /**
- * STORY-role-004: POST /api/v1/tracks — Track upload execution endpoint.
+ * STORY-track-003: POST /api/v1/tracks — Track Registration Endpoint
  *
- * Enforces email verification gating via requireVerifiedEmail middleware:
- * - Unverified users receive HTTP 403 EMAIL_NOT_VERIFIED
- * - Verified ARTIST/ADMIN users proceed to track creation
- * - Gating only applies to POST method (upload), not GET (listing)
- *
- * Per DEC-004: Upload execution is restricted to verified email users only.
- * Per DEC-005: Streaming, search, and playback remain ungated.
+ * Validates title (1-100 chars), genre (normalized taxonomy), and audioStorageKey
+ * presence. Triggers out-of-band audio duration extraction via the metadata service,
+ * sets Track.status to LIVE per DEC-001, links cover art (or defaults to genre-based
+ * cover), persists the Track document via Prisma, and returns HTTP 201.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { apiSuccessResponse, apiErrorResponse } from "@/lib/api/response";
 import { verifySession } from "@/lib/auth";
-import { requireVerifiedEmail, type UserClaims } from "@/middleware/requireVerifiedEmail";
+import {
+  createTrack,
+  validateTrackInput,
+} from "@/services/trackRegistration";
 
-/**
- * Minimal user claims shape for email verification check.
- */
-interface UserClaimsForEmailCheck {
-  userId: string;
-  emailVerified: boolean;
-  roles: string[];
+/* ------------------------------------------------------------------ */
+/*  Request body shape                                                 */
+/* ------------------------------------------------------------------ */
+
+interface TrackRegistrationBody {
+  title: unknown;
+  genre: unknown;
+  audioStorageKey: unknown;
+  coverImageStorageKey?: unknown;
+  description?: unknown;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Route handler — POST /api/v1/tracks                                */
 /* ------------------------------------------------------------------ */
 
-/**
- * POST /api/v1/tracks
- *
- * Creates a new track for an authenticated ARTIST user with verified email.
- * The email verification gate runs before any database or storage operations.
- */
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // 1. Authenticate the user via session cookie
+  // 1. Authenticate via session cookie.
   const session = verifySession(request.headers.get("cookie") ?? "");
 
   if (!session || !session.userId) {
@@ -46,8 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 2. Fetch user record from database to get authoritative emailVerified + roles.
-  //    We never trust client-side claims for auth decisions — only verified DB data.
+  // 2. Resolve authoritative emailVerified + roles from the database.
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { emailVerified: true, roles: true },
@@ -60,49 +56,118 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 3. Apply email verification gate (DEC-004)
-  const userClaims: UserClaimsForEmailCheck = {
-    userId: session.userId,
-    emailVerified: user.emailVerified,
-    roles: user.roles,
-  };
-
-  const emailCheck = requireVerifiedEmail(
-    userClaims,
-    "/api/v1/tracks",
-    "/verify-email",
-  );
-
-  if (!emailCheck.allowed) {
+  // 3. Email verification gate (DEC-004).
+  if (!user.emailVerified) {
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "EMAIL_NOT_VERIFIED",
-          message: "Email verification is required to upload tracks. Please verify your email address.",
-          resendUrl: "/verify-email",
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-          requestId:
-            typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-              ? crypto.randomUUID()
-              : `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        },
-      },
+      apiErrorResponse("EMAIL_NOT_VERIFIED", "Email verification is required to upload tracks."),
       { status: 403 },
     );
   }
 
-  // 4. At this point: user is authenticated, email is verified, and has
-  //    ARTIST role (enforced by route-level RBAC).
-  //    Track creation logic would proceed here (STORY-track-001).
+  // 4. ARTIST role gate — only artists may register tracks.
+  if (!user.roles.includes("ARTIST")) {
+    return NextResponse.json(
+      apiErrorResponse("FORBIDDEN_ROLE", "ARTIST role required to register tracks."),
+      { status: 403 },
+    );
+  }
 
-  return NextResponse.json(
-    apiSuccessResponse({
-      message: "Track upload initiated.",
-      status: "processing",
-    }),
-    { status: 202 },
-  );
+  // 5. Look up the artist profile for this user.
+  const artistProfile = await prisma.artistProfile.findUnique({
+    where: { userId: session.userId },
+  });
+
+  if (!artistProfile) {
+    return NextResponse.json(
+      apiErrorResponse("ARTIST_PROFILE_REQUIRED", "You must have an artist profile to register tracks."),
+      { status: 403 },
+    );
+  }
+
+  // 6. Parse request body.
+  let body: TrackRegistrationBody;
+  try {
+    body = (await request.json()) as TrackRegistrationBody;
+  } catch {
+    return NextResponse.json(
+      apiErrorResponse("INVALID_JSON", "Request body must be valid JSON."),
+      { status: 400 },
+    );
+  }
+
+  // 7. Build input for validation.
+  const input = {
+    title: body.title,
+    genre: body.genre,
+    artistProfileId: artistProfile.id,
+    audioStorageKey: body.audioStorageKey,
+    coverImageStorageKey: body.coverImageStorageKey ?? undefined,
+    description: body.description ?? undefined,
+  };
+
+  // 8. Validate input — title, genre, audioStorageKey.
+  const validationErrors = validateTrackInput(input);
+  if (validationErrors) {
+    return NextResponse.json(
+      apiErrorResponse(
+        "VALIDATION_ERROR",
+        `Track registration validation failed.`,
+        validationErrors.details.map((d) => ({
+          field: d.field,
+          code: d.code,
+          message: d.message,
+        })),
+      ),
+      { status: 422 },
+    );
+  }
+
+  // 9. Call the track registration service.
+  try {
+    const track = await createTrack(input);
+
+    return NextResponse.json(
+      apiSuccessResponse(track),
+      { status: 201 },
+    );
+  } catch (err: unknown) {
+    // Handle corrupted audio error from the service layer.
+    if (
+      err instanceof Error &&
+      (err as any).corruptedKey
+    ) {
+      return NextResponse.json(
+        apiErrorResponse(
+          "CORRUPTED_AUDIO_FILE",
+          "Audio file is corrupted or unreadable.",
+        ),
+        { status: 422 },
+      );
+    }
+
+    // Handle validation errors that propagated up.
+    if (
+      err instanceof Error &&
+      (err as any).validationErrors
+    ) {
+      const validationErrors = (err as any).validationErrors as {
+        fields: string[];
+        details: Array<{ field: string; code: string; message: string }>;
+      };
+      return NextResponse.json(
+        apiErrorResponse(
+          "VALIDATION_ERROR",
+          "Track registration validation failed.",
+          validationErrors.details,
+        ),
+        { status: 422 },
+      );
+    }
+
+    // Catch-all for unexpected errors.
+    return NextResponse.json(
+      apiErrorResponse("INTERNAL_ERROR", "An unexpected error occurred."),
+      { status: 500 },
+    );
+  }
 }

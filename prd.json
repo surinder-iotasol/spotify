@@ -1340,7 +1340,7 @@
       ],
       "priority": 710,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-002a"
       ],
@@ -1357,7 +1357,7 @@
       ],
       "priority": 720,
       "effort": "medium",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-002b",
         "STORY-track-002c"
@@ -1409,7 +1409,7 @@
       ],
       "priority": 710,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-002a"
       ],
@@ -1426,7 +1426,7 @@
       ],
       "priority": 720,
       "effort": "medium",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-002b",
         "STORY-track-002c"
@@ -1444,7 +1444,7 @@
       ],
       "priority": 730,
       "effort": "medium",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-002d"
       ],
@@ -1465,7 +1465,7 @@
         "Integration test calls POST /api/v1/tracks with valid keys and asserts 201 status and DB Track record."
       ],
       "priority": 740,
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-001",
         "STORY-track-002"
