@@ -16,6 +16,7 @@ import {
   validateTrackInput,
 } from "@/services/trackRegistration";
 import { KeyNotFoundError } from "@/services/audioMetadata";
+import { cleanupOrphanedStorage } from "@/services/trackRegistrationErrorRecovery";
 
 /* ------------------------------------------------------------------ */
 /*  Request body shape                                                 */
@@ -36,6 +37,9 @@ interface TrackRegistrationBody {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 1. Authenticate via session cookie.
   const session = verifySession(request.headers.get("cookie") ?? "");
+
+  // Track storage keys for cleanup on errors.
+  const cleanupContext: { audioStorageKey?: string; coverImageStorageKey?: string } = {};
 
   if (!session || !session.userId) {
     return NextResponse.json(
@@ -124,6 +128,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // 9. Call the track registration service.
+  // Capture cleanup context for error recovery.
+  cleanupContext.audioStorageKey = input.audioStorageKey as string;
+  cleanupContext.coverImageStorageKey = (typeof input.coverImageStorageKey === "string"
+    ? input.coverImageStorageKey
+    : undefined);
+
   try {
     const track = await createTrack(input);
 
@@ -133,11 +143,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   } catch (err: unknown) {
     // Handle missing storage key — return HTTP 404.
-    if (err instanceof KeyNotFoundError) {
+    if (
+      err instanceof KeyNotFoundError ||
+      (err instanceof Error && (err as any).name === "KeyNotFoundError")
+    ) {
+      const key = (err as Error & { key?: string }).key ?? "unknown";
       return NextResponse.json(
         apiErrorResponse(
           "STORAGE_KEY_NOT_FOUND",
-          `The audio storage key '${err.key}' does not exist.`,
+          `The audio storage key '${key}' was not found.`,
         ),
         { status: 404 },
       );
@@ -148,6 +162,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       err instanceof Error &&
       (err as any).corruptedKey
     ) {
+      // Clean up the corrupted audio file from storage.
+      await cleanupOrphanedStorage({
+        audioStorageKey: typeof input.audioStorageKey === 'string' ? input.audioStorageKey : '',
+        coverImageStorageKey: typeof input.coverImageStorageKey === 'string' ? input.coverImageStorageKey : undefined,
+      });
+
       return NextResponse.json(
         apiErrorResponse(
           "CORRUPTED_AUDIO_FILE",

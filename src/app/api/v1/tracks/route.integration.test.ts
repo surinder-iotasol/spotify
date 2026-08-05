@@ -67,6 +67,18 @@ vi.mock("@/services/audioMetadata", () => ({
     codec: "mp3",
   }),
   CorruptedAudioError: class {} as unknown as typeof import("@/services/audioMetadata").CorruptedAudioError,
+  KeyNotFoundError: class KeyNotFoundError extends Error {
+    public readonly key: string = "";
+    constructor(message?: string, key?: string) {
+      super(message ?? "Key not found");
+      this.name = "KeyNotFoundError";
+      if (key !== undefined) {
+        this.key = key;
+      } else if (message !== undefined) {
+        this.key = message;
+      }
+    }
+  },
 }));
 
 /* ------------------------------------------------------------------ */
@@ -75,6 +87,7 @@ vi.mock("@/services/audioMetadata", () => ({
 
 import { POST } from "./route";
 import prisma from "@/lib/prisma";
+import { KeyNotFoundError } from "@/services/audioMetadata";
 
 function getMockPrisma() {
   return prisma as unknown as {
@@ -318,5 +331,134 @@ describe("POST /api/v1/tracks — integration", () => {
     const data = json.data as Record<string, unknown>;
     expect((data as any).coverImageUrl).toBe("/static/covers/defaults/ambient.png");
     expect((data as any).status).toBe("LIVE");
+  });
+
+  // ================================================================
+  // STORY-track-005b: HTTP 422 CORRUPTED_AUDIO_FILE
+  // ================================================================
+  it("returns 422 with CORRUPTED_AUDIO_FILE error code when audio file is corrupted", async () => {
+    const { extractAudioMetadata, CorruptedAudioError } = (await import("@/services/audioMetadata")) as typeof import("@/services/audioMetadata");
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockClear();
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CorruptedAudioError("Unrecognized audio container format", "audio/ap-001/track-1/corrupted.mp3"),
+    );
+
+    const request = createMockRequest({
+      body: validTrackPayload,
+      cookie: artistCookie(),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(422);
+
+    const json = await response.json();
+    expect(json.success).toBe(false);
+    expect((json as any).error?.code).toBe("CORRUPTED_AUDIO_FILE");
+    expect((json as any).error?.message).toBe("Audio file is corrupted or unreadable.");
+  });
+
+  // STORY-track-005b: HTTP 404 STORAGE_KEY_NOT_FOUND
+  // ================================================================
+  it("returns 404 with STORAGE_KEY_NOT_FOUND error code when storage key is missing", async () => {
+    const { extractAudioMetadata } = (await import("@/services/audioMetadata")) as typeof import("@/services/audioMetadata");
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockClear();
+    const knfe = new KeyNotFoundError("Storage key not found", "audio/ap-001/track-1/missing.mp3");
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockRejectedValueOnce(knfe);
+
+    const request = createMockRequest({
+      body: validTrackPayload,
+      cookie: artistCookie(),
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(404);
+
+    const json = await response.json();
+    expect(json.success).toBe(false);
+    expect((json as any).error?.code).toBe("STORAGE_KEY_NOT_FOUND");
+    expect((json as any).error?.message).toContain("missing");
+  });
+
+  // STORY-track-005e: Corrupted file header — cleanup + 422 + error envelope
+  // ================================================================
+  it("simulates corrupted audio file header, verifies storage cleanup, 422 response, and error envelope", async () => {
+    // Re-mock storage provider to track deleteObject calls for cleanup verification
+    const storageModule = await import("@/lib/storage/storage-provider");
+    const mockDelete = vi.fn().mockResolvedValue(undefined);
+    (storageModule.createStorageProvider as any).mockReturnValue({
+      readHeaderBytes: vi.fn(),
+      deleteObject: mockDelete,
+    });
+
+    // Reset mocks to properly replace them
+    vi.resetModules();
+    const { extractAudioMetadata, CorruptedAudioError } = (await import("@/services/audioMetadata")) as typeof import("@/services/audioMetadata");
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockClear();
+
+    // Simulate corrupted file header
+    const audioKey = "audio/ap-001/track-1/corrupted-header.wav";
+    const coverImageKey = "covers/ap-001/track-1/cover.jpg";
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CorruptedAudioError("Unrecognized audio container format in header", audioKey),
+    );
+
+    const request = createMockRequest({
+      body: {
+        title: "Broken Beat",
+        genre: "ELECTRONIC",
+        audioStorageKey: audioKey,
+        coverImageStorageKey: coverImageKey,
+      },
+      cookie: artistCookie(),
+    });
+
+    // Verify 422 response with proper error envelope
+    const response = await POST(request);
+    expect(response.status).toBe(422);
+
+    const json = await response.json() as Record<string, unknown>;
+    expect(json.success).toBe(false);
+    expect((json as any).error?.code).toBe("CORRUPTED_AUDIO_FILE");
+    expect((json as any).error?.message).toBe("Audio file is corrupted or unreadable.");
+
+    // Verify storage cleanup was executed (deletion of corrupted audio + cover image)
+    expect(mockDelete).toHaveBeenCalledWith(audioKey);
+    expect(mockDelete).toHaveBeenCalledWith(coverImageKey);
+  });
+
+  it("verifies cleanup runs even with deleted (missing) storage keys for corrupted upload", async () => {
+    // Simulate that deletedObject throws for missing key — should still return 422
+    const storageModule = await import("@/lib/storage/storage-provider");
+    const mockDelete = vi.fn().mockRejectedValue(new Error("NoSuchKey: Object does not exist"));
+    (storageModule.createStorageProvider as any).mockReturnValue({
+      readHeaderBytes: vi.fn(),
+      deleteObject: mockDelete,
+    });
+
+    const { extractAudioMetadata, CorruptedAudioError } = (await import("@/services/audioMetadata")) as typeof import("@/services/audioMetadata");
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockClear();
+
+    const audioKey = "audio/ap-001/track-1/no-such-file.mp3";
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CorruptedAudioError("File has corrupted header bytes", audioKey),
+    );
+
+    const request = createMockRequest({
+      body: {
+        title: "Ghost Track",
+        genre: "LO_FI",
+        audioStorageKey: audioKey,
+      },
+      cookie: artistCookie(),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(422);
+
+    const json = await response.json() as Record<string, unknown>;
+    expect(json.success).toBe(false);
+    expect((json as any).error?.code).toBe("CORRUPTED_AUDIO_FILE");
+
+    // Verify cleanup was attempted (even though the key didn't exist)
+    expect(mockDelete).toHaveBeenCalledWith(audioKey);
+    expect(mockDelete).toHaveBeenCalledTimes(1); // Only audio key, no cover image
   });
 });
