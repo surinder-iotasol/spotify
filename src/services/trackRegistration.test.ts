@@ -43,6 +43,7 @@ vi.mock("@/lib/storage/storage-provider", () => ({
 
 import prisma from "@/lib/prisma";
 import { extractAudioMetadata, CorruptedAudioError } from "@/services/audioMetadata";
+import { createStorageProvider } from "@/lib/storage/storage-provider";
 
 import {
   validateTrackInput,
@@ -164,7 +165,7 @@ describe("validateTrackInput", () => {
     const result = validateTrackInput(input);
     expect(result).not.toBeNull();
     expect(result!.details).toContainEqual(
-      expect.objectContaining({ field: "genre", code: "INVALID_GENRE" }),
+      expect.objectContaining({ field: "genre", code: "INVALID_GENRE_TAG" }),
     );
   });
 
@@ -216,7 +217,7 @@ describe("normalizeGenre", () => {
   });
 
   it("throws on invalid genre", () => {
-    expect(() => normalizeGenre("METAL")).toThrow("Invalid genre: METAL");
+    expect(() => normalizeGenre("METAL")).toThrow("Invalid genre tag");
   });
 });
 
@@ -431,5 +432,316 @@ describe("createTrack", () => {
 
     expect(result.duration).toBe(0);
     expect(result.status).toBe("LIVE");
+  });
+
+  // ================================================================
+  // STORY-track-005a: Storage cleanup tests
+  // ================================================================
+
+  it("deletes audioStorageKey when CorruptedAudioError is thrown", async () => {
+    const audioKey = "audio/ap-001/track-1/corrupted.mp3";
+    const coverKey = "covers/ap-001/art.webp";
+
+    const mockStorage = { deleteObject: vi.fn().mockResolvedValue(undefined) };
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CorruptedAudioError("Bad format", audioKey),
+    );
+
+    await expect(
+      createTrack(buildValidInput({ audioStorageKey: audioKey, coverImageStorageKey: coverKey })),
+    ).rejects.toThrow("corrupted or unreadable");
+
+    // Verify deleteObject was called on both keys
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith(audioKey);
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith(coverKey);
+  });
+
+  it("deletes audioStorageKey when prisma.track.create fails", async () => {
+    const audioKey = "audio/ap-001/track-1/abc123.mp3";
+    const coverKey = "covers/ap-001/art.webp";
+
+    const mockStorage = { deleteObject: vi.fn().mockResolvedValue(undefined) };
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 200.5,
+      durationMs: 200500,
+      bitrate: 128000,
+      sampleRate: 44100,
+      channels: 2,
+      codec: "mp3",
+    });
+    (prisma.track.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("Database connection failed"),
+    );
+
+    await expect(
+      createTrack(buildValidInput({ audioStorageKey: audioKey, coverImageStorageKey: coverKey })),
+    ).rejects.toThrow("Database connection failed");
+
+    // Verify deleteObject was called on both keys
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith(audioKey);
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith(coverKey);
+  });
+
+  it("tolerates missing coverImageStorageKey during cleanup (only audio key)", async () => {
+    const audioKey = "audio/ap-001/track-1/abc123.mp3";
+
+    const mockStorage = { deleteObject: vi.fn().mockResolvedValue(undefined) };
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 200.5,
+      durationMs: 200500,
+      bitrate: 0,
+      sampleRate: 0,
+      channels: 0,
+      codec: "mp3",
+    });
+    (prisma.track.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("Prisma unique constraint violation"),
+    );
+
+    await expect(
+      createTrack(buildValidInput({ audioStorageKey: audioKey })),
+    ).rejects.toThrow("Prisma unique constraint violation");
+
+    // Once audio key, no cover key
+    expect(mockStorage.deleteObject).toHaveBeenCalledTimes(1);
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith(audioKey);
+    // Never called with cover key (undefined — tolerance)
+    const coverCalls = mockStorage.deleteObject.mock.calls.filter(
+      (call) => call[0] !== audioKey,
+    );
+    expect(coverCalls).toHaveLength(0);
+  });
+
+  it("does NOT trigger cleanup on validation errors", async () => {
+    const storage = createStorageProvider({
+      bucket: "test",
+      region: "us-east-1",
+      endpoint: "",
+      accessKeyId: "",
+      secretAccessKey: "",
+    });
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 200.5,
+      durationMs: 200500,
+      bitrate: 0,
+      sampleRate: 0,
+      channels: 0,
+      codec: "mp3",
+    });
+
+    const input = buildValidInput({ title: "" });
+    await expect(createTrack(input)).rejects.toThrow("Track registration validation failed");
+
+    // deleteObject should NOT have been called (validation failed before uploads logic)
+    expect(storage.deleteObject).not.toHaveBeenCalled();
+  });
+
+  it("deleteObject on missing files does NOT throw (tolerated gracefully)", async () => {
+    const audioKey = "audio/ap-001/track-1/ghost.mp3";
+
+    const mockStorage = { deleteObject: vi.fn().mockRejectedValue(new Error("NoSuchKey")) };
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 0,
+      durationMs: 0,
+      bitrate: 0,
+      sampleRate: 0,
+      channels: 0,
+      codec: "mp3",
+    });
+    (prisma.track.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("MongoDB error"),
+    );
+
+    // Should throw Prisma error, not the deleteObject error
+    await expect(createTrack(buildValidInput({ audioStorageKey: audioKey }))).rejects.toThrow(
+      "MongoDB error",
+    );
+
+    // deleteObject was called even though it failed
+    expect(mockStorage.deleteObject).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  createTrack — storage cleanup on failure (STORY-track-005a)         */
+/* ------------------------------------------------------------------ */
+
+describe("createTrack — storage cleanup on registration failure (STORY-track-005a)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+
+    delete process.env.S3_BUCKET_NAME;
+    delete process.env.AWS_REGION;
+    delete process.env.S3_ENDPOINT;
+    delete process.env.AWS_ACCESS_KEY_ID;
+    delete process.env.AWS_SECRET_ACCESS_KEY;
+  });
+
+  it("calls deleteObject on audioStorageKey when prisma.track.create fails", async () => {
+    const mockStorage = {
+      deleteObject: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Re-mock createStorageProvider to return our spy
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 180,
+      durationMs: 180000,
+      bitrate: 128000,
+      sampleRate: 44100,
+      channels: 2,
+      codec: "mp3",
+    });
+
+    (prisma.track.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("DB constraint violation"));
+
+    const result = createTrack(buildValidInput({ audioStorageKey: "audio/test/malformed.mp3" }));
+
+    await expect(result).rejects.toThrow("DB constraint violation");
+
+    expect(mockStorage.deleteObject).toHaveBeenCalledTimes(1);
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith("audio/test/malformed.mp3");
+  });
+
+  it("calls deleteObject on both audioStorageKey and coverImageStorageKey when prisma fails", async () => {
+    const mockStorage = {
+      deleteObject: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 180,
+      durationMs: 180000,
+      bitrate: 128000,
+      sampleRate: 44100,
+      channels: 2,
+      codec: "mp3",
+    });
+
+    (prisma.track.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("DB constraint violation"));
+
+    const audioKey = "audio/test/track.mp3";
+    const coverKey = "covers/test/cover.webp";
+    const result = createTrack(
+      buildValidInput({ audioStorageKey: audioKey, coverImageStorageKey: coverKey }),
+    );
+
+    await expect(result).rejects.toThrow("DB constraint violation");
+
+    expect(mockStorage.deleteObject).toHaveBeenCalledTimes(2);
+    expect(mockStorage.deleteObject).toHaveBeenNthCalledWith(1, audioKey);
+    expect(mockStorage.deleteObject).toHaveBeenNthCalledWith(2, coverKey);
+  });
+
+  it("calls deleteObject on audioStorageKey when CorruptedAudioError is thrown", async () => {
+    const mockStorage = {
+      deleteObject: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CorruptedAudioError("Unrecognized audio container format", "bad.mp3"),
+    );
+
+    const result = createTrack(buildValidInput({ audioStorageKey: "bad.mp3" }));
+
+    await expect(result).rejects.toThrow("corrupted or unreadable");
+
+    expect(mockStorage.deleteObject).toHaveBeenCalledTimes(1);
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith("bad.mp3");
+  });
+
+  it("tolerates missing coverImageStorageKey (does not call deleteObject for undefined)", async () => {
+    const mockStorage = {
+      deleteObject: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 180,
+      durationMs: 180000,
+      bitrate: 128000,
+      sampleRate: 44100,
+      channels: 2,
+      codec: "mp3",
+    });
+
+    (prisma.track.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("DB constraint violation"));
+
+    const result = createTrack(buildValidInput({ audioStorageKey: "audio/test/track.mp3" }));
+
+    await expect(result).rejects.toThrow("DB constraint violation");
+
+    expect(mockStorage.deleteObject).toHaveBeenCalledTimes(1);
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith("audio/test/track.mp3");
+  });
+
+  it("does NOT call deleteObject on validation errors", async () => {
+    const mockStorage = {
+      deleteObject: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    const result = createTrack(
+      buildValidInput({ title: "" }),
+    );
+
+    await expect(result).rejects.toThrow("Track registration validation failed");
+
+    expect(mockStorage.deleteObject).not.toHaveBeenCalled();
+  });
+
+  it("tolerates deleteObject throwing for missing keys", async () => {
+    const mockStorage = {
+      deleteObject: vi.fn().mockRejectedValue(new Error("NoSuchKey")),
+    };
+
+    const storageModule = await import("@/lib/storage/storage-provider");
+    (storageModule.createStorageProvider as ReturnType<typeof vi.fn>).mockReturnValue(mockStorage);
+
+    (extractAudioMetadata as ReturnType<typeof vi.fn>).mockResolvedValue({
+      duration: 180,
+      durationMs: 180000,
+      bitrate: 128000,
+      sampleRate: 44100,
+      channels: 2,
+      codec: "mp3",
+    });
+
+    (prisma.track.create as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("DB constraint violation"));
+
+    const result = createTrack(
+      buildValidInput({ audioStorageKey: "audio/test/track.mp3" }),
+    );
+
+    // The original error should still propagate
+    await expect(result).rejects.toThrow("DB constraint violation");
+
+    expect(mockStorage.deleteObject).toHaveBeenCalledTimes(1);
+    expect(mockStorage.deleteObject).toHaveBeenCalledWith("audio/test/track.mp3");
   });
 });
