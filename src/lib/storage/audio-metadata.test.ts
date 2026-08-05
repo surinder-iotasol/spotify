@@ -63,11 +63,13 @@ function buildWavFile(opts?: {
   channels?: number;
   bitsPerSample?: number;
   dataSize?: number;
+  audioFormat?: number;
 }): Buffer {
   const sampleRate = opts?.sampleRate ?? 44100;
   const channels = opts?.channels ?? 2;
   const bitsPerSample = opts?.bitsPerSample ?? 16;
   const dataSize = opts?.dataSize ?? 44100 * 2; // 1 second at 44100*2*16
+  const audioFormat = opts?.audioFormat ?? 1; // PCM default
 
   const bytesPerSec = sampleRate * channels * (bitsPerSample / 8);
   const blockAlign = channels * (bitsPerSample / 8);
@@ -86,7 +88,7 @@ function buildWavFile(opts?: {
   // fmt chunk
   buf.write('fmt ', off); off += 4;
   buf.writeUInt32LE(fmtChunkSize, off); off += 4;
-  buf.writeUInt16LE(1, off); off += 2; // PCM
+  buf.writeUInt16LE(audioFormat, off); off += 2;
   buf.writeUInt16LE(channels, off); off += 2;
   buf.writeUInt32LE(sampleRate, off); off += 4;
   buf.writeUInt32LE(bytesPerSec, off); off += 4;
@@ -310,6 +312,67 @@ describe('parseWavHeader', () => {
     expect(result.channelCount).toBe(1);
     expect(result.bitrate).toBe(44100); // 44100 * 1 * 8
     expect(result.duration).toBeCloseTo(1.0, 4);
+  });
+
+  it('throws CorruptedAudioError when WAV has fmt chunk but no data chunk', () => {
+    // Build WAV with fmt chunk but omit the data chunk entirely
+    const sampleRate = 44100;
+    const channels = 2;
+    const bitsPerSample = 16;
+    const bytesPerSec = sampleRate * channels * (bitsPerSample / 8);
+    const blockAlign = channels * (bitsPerSample / 8);
+
+    const buf = Buffer.alloc(4 + 4 + 4 + 8 + 16); // RIFF header + fmt chunk only
+    let off = 0;
+    buf.write('RIFF', off); off += 4;
+    buf.writeUInt32LE(buf.length - 8, off); off += 4;
+    buf.write('WAVE', off); off += 4;
+    buf.write('fmt ', off); off += 4;
+    buf.writeUInt32LE(16, off); off += 4;
+    buf.writeUInt16LE(1, off); off += 2; // PCM
+    buf.writeUInt16LE(channels, off); off += 2;
+    buf.writeUInt32LE(sampleRate, off); off += 4;
+    buf.writeUInt32LE(bytesPerSec, off); off += 4;
+    buf.writeUInt16LE(blockAlign, off); off += 2;
+    buf.writeUInt16LE(bitsPerSample, off); off += 2;
+    // No 'data' chunk follows
+
+    expect(() => parseWavHeader(buf)).toThrow(CorruptedAudioError);
+  });
+
+  it('throws CorruptedAudioError when WAV has non-PCM audio format (audioFormat != 1)', () => {
+    // Build a WAV with audioFormat=3 (IEEE float) instead of PCM (1)
+    const sampleRate = 44100;
+    const channels = 2;
+    const bitsPerSample = 32;
+    const bytesPerSec = sampleRate * channels * (bitsPerSample / 8);
+    const blockAlign = channels * (bitsPerSample / 8);
+    const dataSize = 352800; // 1 second at 44100*2*4
+
+    const fmtChunkSize = 16;
+    const totalSize = 4 + 8 + fmtChunkSize + 8 + dataSize;
+
+    const buf = Buffer.alloc(totalSize);
+    let off = 0;
+    buf.write('RIFF', off); off += 4;
+    buf.writeUInt32LE(totalSize - 8, off); off += 4;
+    buf.write('WAVE', off); off += 4;
+
+    // fmt chunk with audioFormat=3 (IEEE float, NOT PCM)
+    buf.write('fmt ', off); off += 4;
+    buf.writeUInt32LE(fmtChunkSize, off); off += 4;
+    buf.writeUInt16LE(3, off); off += 2; // IEEE float, not PCM
+    buf.writeUInt16LE(channels, off); off += 2;
+    buf.writeUInt32LE(sampleRate, off); off += 4;
+    buf.writeUInt32LE(bytesPerSec, off); off += 4;
+    buf.writeUInt16LE(blockAlign, off); off += 2;
+    buf.writeUInt16LE(bitsPerSample, off); off += 2;
+
+    // data chunk
+    buf.write('data', off); off += 4;
+    buf.writeUInt32LE(dataSize, off); off += 4;
+
+    expect(() => parseWavHeader(buf)).toThrow(CorruptedAudioError);
   });
 });
 
