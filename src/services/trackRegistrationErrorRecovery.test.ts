@@ -14,6 +14,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /* ------------------------------------------------------------------ */
+/*  module-scoped variable: the module-scoped mock variable stores a   */
+/*  reference to the deleteObject mock so it survives clearAllMocks.   */
+/* ------------------------------------------------------------------ */
+
+let deleteMock: ReturnType<typeof vi.fn>;
+
+/* ------------------------------------------------------------------ */
 /*  Hoisted mocks — module paths must resolve before any real import   */
 /* ------------------------------------------------------------------ */
 
@@ -38,10 +45,9 @@ vi.mock("@/services/audioMetadata", () => ({
 
 vi.mock("@/lib/storage/storage-provider", () => ({
   createStorageProvider: vi.fn((config: Record<string, string>) => {
-    // Capture config for env-based assertions
-    (createStorageProvider as any).lastConfig = config;
+    deleteMock = vi.fn().mockResolvedValue(undefined);
     return {
-      deleteObject: vi.fn().mockResolvedValue(undefined),
+      deleteObject: deleteMock,
     };
   }),
 }));
@@ -85,21 +91,20 @@ function clearEnv(): void {
   delete process.env.AWS_SECRET_ACCESS_KEY;
 }
 
-function cleanupCtx(overrides?: { audioKey?: string; coverKey?: string }) {
+function cleanupCtx(overrides?: {
+  audioKey?: string;
+  coverKey?: string | undefined;
+}) {
+  const audioKey =
+    (overrides?.audioKey ?? "audio/ap-001/track-1/abc123.mp3") as string;
+  const coverKey =
+    typeof overrides?.coverKey === "undefined"
+      ? undefined
+      : (overrides.coverKey ?? "covers/artist1/cover.jpg");
   return {
-    audioStorageKey:
-      overrides?.audioKey ?? "audio/ap-001/track-1/abc123.mp3",
-    coverImageStorageKey: overrides?.coverKey ?? "covers/artist1/cover.jpg",
+    audioStorageKey: audioKey,
+    coverImageStorageKey: coverKey,
   };
-}
-
-function getDeleteMock() {
-  const provider = (createStorageProvider as any).mock.results?.[0]?.value;
-  return provider?.deleteObject as ReturnType<typeof vi.fn>;
-}
-
-function getConfig() {
-  return (createStorageProvider as any).lastConfig;
 }
 
 /* ------------------------------------------------------------------ */
@@ -126,37 +131,35 @@ describe("cleanupOrphanedStorage", () => {
   it("calls deleteObject on audioStorageKey", async () => {
     const ctx = cleanupCtx();
     await cleanupOrphanedStorage(ctx);
-    const deleteMock = getDeleteMock();
+
     expect(deleteMock).toHaveBeenCalledWith(ctx.audioStorageKey);
   });
 
   it("calls deleteObject on coverImageStorageKey when present", async () => {
-    const ctx = cleanupCtx({
-      coverKey: "covers/artist1/cover.jpg",
-    });
+    const coverKey = "covers/artist1/cover.jpg";
+    const ctx = cleanupCtx({ coverKey });
     await cleanupOrphanedStorage(ctx);
-    const deleteMock = getDeleteMock();
+
     expect(deleteMock).toHaveBeenCalledWith(ctx.coverImageStorageKey);
   });
 
-  it("does NOT call deleteObject on coverImageStorageKey when omitted", async () => {
-    const ctx = cleanupCtx({ coverKey: undefined });
-    await cleanupOrphanedStorage(ctx);
-    const deleteMock = getDeleteMock();
+  it("calls deleteObject exactly once when coverImageStorageKey is omitted", async () => {
+    const noCoverCtx = { audioStorageKey: "audio/ap-001/track-1/abc123.mp3" };
+    await cleanupOrphanedStorage(noCoverCtx);
+
     expect(deleteMock).toHaveBeenCalledTimes(1);
-    expect(deleteMock).toHaveBeenCalledWith(ctx.audioStorageKey);
+    expect(deleteMock).toHaveBeenCalledWith(noCoverCtx.audioStorageKey);
   });
 
   it("tolerates deletion errors on audioStorageKey without throwing", async () => {
-    vi.mocked(getDeleteMock()).mockRejectedValueOnce(
+    (deleteMock as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("S3 error"),
     );
     await expect(cleanupOrphanedStorage(cleanupCtx())).resolves.toBeUndefined();
   });
 
   it("tolerates deletion errors on coverImageStorageKey without throwing", async () => {
-    const deleteMock = getDeleteMock();
-    deleteMock
+    (deleteMock as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error("S3 error"));
 
@@ -173,22 +176,24 @@ describe("cleanupOrphanedStorage", () => {
     const ctx = cleanupCtx();
     await cleanupOrphanedStorage(ctx);
 
-    const cfg = getConfig();
-    expect(cfg.bucket).toBe("my-bucket");
-    expect(cfg.region).toBe("eu-west-1");
-    expect(cfg.endpoint).toBe("http://localhost:9000");
-    expect(cfg.accessKeyId).toBe("AKIA123");
-    expect(cfg.secretAccessKey).toBe("secret456");
+    const cfg = (createStorageProvider as any).mock.results?.[0]?.value;
+    // createStorageProvider captures config; check it was called with expected values
+    const callArgs = (createStorageProvider as any).mock.calls[0]?.[0];
+    expect(callArgs.bucket).toBe("my-bucket");
+    expect(callArgs.region).toBe("eu-west-1");
+    expect(callArgs.endpoint).toBe("http://localhost:9000");
+    expect(callArgs.accessKeyId).toBe("AKIA123");
+    expect(callArgs.secretAccessKey).toBe("secret456");
   });
 
   it("uses defaults when env vars are absent", async () => {
     const ctx = cleanupCtx();
     await cleanupOrphanedStorage(ctx);
 
-    const cfg = getConfig();
-    expect(cfg.bucket).toBe("");
-    expect(cfg.region).toBe("us-east-1");
-    expect(cfg.accessKeyId).toBe("");
+    const callArgs = (createStorageProvider as any).mock.calls[0]?.[0];
+    expect(callArgs.bucket).toBe("");
+    expect(callArgs.region).toBe("us-east-1");
+    expect(callArgs.accessKeyId).toBe("");
   });
 });
 
@@ -273,14 +278,11 @@ describe("generateKeyNotFoundEnvelope", () => {
   });
 
   it("handles key with special characters", () => {
-    const envelope = generateKeyNotFoundEnvelope(
-      "audio/ap-001/track 1 (feat. remix).mp3",
-    );
+    const key = "audio/ap-001/track 1 (feat. remix).mp3";
+    const envelope = generateKeyNotFoundEnvelope(key);
     const body = envelope.body as Record<string, unknown>;
     const msg = (body.error as Record<string, string>).message;
-    expect(msg).toContain(
-      "audio/ap-001/track 1 (feat. remix).mp3",
-    );
+    expect(msg).toContain(key);
   });
 });
 
@@ -295,7 +297,6 @@ describe("handleRegistrationError", () => {
     const error = new CorruptedAudioError("bad header");
     await handleRegistrationError(error, ctx);
 
-    const deleteMock = getDeleteMock();
     expect(deleteMock).toHaveBeenCalledWith(ctx.audioStorageKey);
   });
 
@@ -314,7 +315,6 @@ describe("handleRegistrationError", () => {
     const error = new KeyNotFoundError("Key not found", "audio/missing.mp3");
     await handleRegistrationError(error, ctx);
 
-    const deleteMock = getDeleteMock();
     expect(deleteMock).toHaveBeenCalledWith(ctx.audioStorageKey);
   });
 
@@ -354,12 +354,11 @@ describe("handleRegistrationError", () => {
     const error = new Error("unknown failure");
     await handleRegistrationError(error, ctx);
 
-    const deleteMock = getDeleteMock();
     expect(deleteMock).toHaveBeenCalledWith(ctx.audioStorageKey);
   });
 
   it("tolerates cleanup deletion errors on CorruptedAudioError path", async () => {
-    vi.mocked(getDeleteMock()).mockRejectedValueOnce(
+    (deleteMock as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("S3 gone"),
     );
     const error = new CorruptedAudioError("bad header");
