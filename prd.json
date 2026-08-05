@@ -1544,11 +1544,11 @@
       ],
       "priority": 780,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-005a"
       ],
-      "notes": "",
+      "notes": "Implemented KeyNotFoundError in services/audioMetadata.ts wrapping AWS NoSuchKey/NoSuchBucket. Re-thrown through trackRegistration.ts createTrack so route handler returns HTTP 404. Existing CORRUPTED_AUDIO_FILE (HTTP 422) preserved. All 12 route integration tests pass including both 422 and 404 test cases.",
       "model": "deepseek"
     },
     {
@@ -1577,7 +1577,7 @@
       ],
       "priority": 800,
       "effort": "low",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-005c"
       ],
