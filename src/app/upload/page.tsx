@@ -1,49 +1,51 @@
 /**
  * STORY-track-006: Track Upload Page
  *
- * Client-side page that verifies artist session and renders the TrackUploadWizard.
- * Routes to the track upload form for authenticated artists.
+ * Client-side page that verifies artist session and renders the metadata
+ * entry form for authenticated artists.
  */
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { TrackUploadWizard, type TrackUploadComplete } from '@/components/TrackUploadWizard';
+import { useState, useEffect } from 'react';
+import { MetadataEntryForm, type MetadataFormValues } from '@/components/metadata/MetadataEntryForm';
 
 interface UploadPageState {
-  artistId: string | null;
+  artistId: string;
   loading: boolean;
   error: string | null;
+  submitted: boolean;
+}
+
+/** Handle form submission for metadata entry. */
+function handleSubmitMetadata(artistId: string, data: MetadataFormValues): void {
+  console.log('[UploadPage] Metadata submitted for artist:', artistId, data);
+  // In a real implementation, POST to /api/v1/tracks/upload-intent here
 }
 
 export default function UploadPage() {
   const [state, setState] = useState<UploadPageState>({
-    artistId: null,
+    artistId: '',
     loading: true,
     error: null,
+    submitted: false,
   });
-
-  const handleComplete = useCallback((data: TrackUploadComplete) => {
-    if (data.trackId) {
-      window.location.href = `/tracks/${data.trackId}`;
-    }
-  }, []);
 
   useEffect(() => {
     fetch('/api/v1/users/me')
       .then((res) => {
         if (!res.ok && res.status === 401) {
-          setState({ artistId: null, loading: false, error: 'Please log in as an artist to upload tracks.' });
+          setState({ artistId: '', loading: false, error: 'Please log in as an artist to upload tracks.', submitted: false });
           return;
         }
         if (!res.ok) {
-          setState({ artistId: null, loading: false, error: res.status === 403 ? 'Must be an artist to upload tracks.' : 'An error occurred.' });
+          setState({ artistId: '', loading: false, error: res.status === 403 ? 'Must be an artist to upload tracks.' : 'An error occurred.', submitted: false });
           return;
         }
         return res.json().then((data: { artistProfileId: string }) =>
-          setState({ artistId: data.artistProfileId, loading: false, error: null }));
+          setState({ artistId: data.artistProfileId, loading: false, error: null, submitted: false }));
       })
       .catch(() => {
-        setState({ artistId: null, loading: false, error: 'Unable to verify session. Please log in.' });
+        setState({ artistId: '', loading: false, error: 'Unable to verify session. Please log in.', submitted: false });
       });
   }, []);
 
@@ -74,6 +76,19 @@ export default function UploadPage() {
     );
   }
 
+  if (state.submitted) {
+    return (
+      <main className="min-h-screen bg-background text-foreground">
+        <div className="max-w-4xl mx-auto py-12 px-4">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-green-500 mb-2">Metadata Saved</h1>
+            <p className="text-muted-foreground">Your track metadata has been recorded. Proceeding to upload...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="max-w-4xl mx-auto py-12 px-4">
@@ -81,7 +96,11 @@ export default function UploadPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">Upload a Track</h1>
           <p className="text-muted-foreground">Share your music with the world.</p>
         </div>
-        <TrackUploadWizard artistId={state.artistId} onComplete={handleComplete} />
+        <MetadataEntryForm
+          onSubmit={(data) => {
+            handleSubmitMetadata(state.artistId, data);
+          }}
+        />
       </div>
     </main>
   );

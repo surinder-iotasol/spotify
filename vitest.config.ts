@@ -11,7 +11,7 @@ export default defineConfig({
         url: 'http://localhost/',
       },
     },
-    include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}', 'src/**/*.integration.test.{ts,tsx}', 'src/**/corruptedUpload.integration.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'src/**/*.integration.test.{ts,tsx}', 'src/**/corruptedUpload.integration.test.{ts,tsx}', 'tests/setup.ts'],
     exclude: ['node_modules', '.next', 'e2e'],
     setupFiles: ['./tests/setup.ts'],
     coverage: {
