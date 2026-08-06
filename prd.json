@@ -1614,6 +1614,28 @@
         "Playwright spec in e2e/tests/track-upload.spec.ts tests picking an MP3 file, filling metadata, uploading, and verifying redirect to published track view."
       ],
       "priority": 820,
+      "passes": true,
+      "dependsOn": [
+        "STORY-track-001",
+        "STORY-track-003",
+        "STORY-storage-004",
+        "STORY-setup-003"
+      ],
+      "notes": "auto-split into 4 sub-stories",
+      "effort": "high",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-006a",
+      "title": "Scaffold dashboard upload route and shell",
+      "description": "Create the /dashboard/upload route with a minimal page shell. Include navigation link from the dashboard. Verify page renders and is accessible at the correct path.",
+      "acceptanceCriteria": [
+        "Route renders at /dashboard/upload with correct page title",
+        "Navigation link from dashboard redirects to upload page",
+        "Basic layout shell includes header space and content area"
+      ],
+      "priority": 820.1,
+      "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-track-001",
@@ -1622,7 +1644,60 @@
         "STORY-setup-003"
       ],
       "notes": "",
-      "effort": "high",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-006b",
+      "title": "Build client-side file upload zone component",
+      "description": "Create a drag-and-drop upload zone that validates file type (MP3, WAV) and size (max 50MB). Show file preview name and indicate rejected files.",
+      "acceptanceCriteria": [
+        "Renders a visible drop zone with styled border and hover state",
+        "Accepts and displays MP3 and WAV files without error",
+        "Rejects files exceeding 50MB or wrong format with visible message"
+      ],
+      "priority": 820.2,
+      "effort": "low",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-006a"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-006c",
+      "title": "Create metadata entry form with validation",
+      "description": "Build a form with inputs for track title, genre dropdown, description text, and cover art image picker. Apply validation rules per the original spec.",
+      "acceptanceCriteria": [
+        "Title field accepts 1-100 characters with live validation",
+        "Genre dropdown populates from platform genre taxonomy",
+        "Description field enforces 500-character max and accepts multi-line input"
+      ],
+      "priority": 820.3,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-006b"
+      ],
+      "notes": "",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-006d",
+      "title": "Implement two-step upload flow with progress bar",
+      "description": "Integrate presigned URL upload workflow. Call /upload-intent API, execute direct PUT to presigned URL with progress percentage, submit metadata, and handle errors with retry.",
+      "acceptanceCriteria": [
+        "Calls /upload-intent endpoint and receives presigned S3 URL",
+        "Direct PUT to presigned URL shows real-time percentage progress bar",
+        "Displays error banner with retry button on upload or metadata failure"
+      ],
+      "priority": 820.4,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-006c"
+      ],
+      "notes": "",
       "model": "deepseek"
     },
     {
