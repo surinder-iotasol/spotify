@@ -45,6 +45,14 @@ export interface StorageProviderConfig {
 }
 
 /**
+ * Options for reading file headers from object storage.
+ */
+export interface ReadHeaderBytesOptions {
+  /** Number of bytes to read (default: 8192). */
+  byteCount?: number;
+}
+
+/**
  * Unified StorageProvider interface for object storage operations.
  * Exposes a consistent API over S3 and R2 backends.
  */
@@ -66,6 +74,19 @@ export interface StorageProvider {
 
   /** Retrieve metadata (head object) for a given key. */
   getObjectMetadata(key: string): Promise<ObjectMetadata>;
+
+  /**
+   * Read the header bytes of an object from storage.
+   *
+   * @param key — Object storage key.
+   * @param options — Byte count and other read options.
+   * @returns Buffer containing the first N bytes of the object.
+   * @throws Error with code `KEY_NOT_FOUND` when the object does not exist.
+   */
+  readHeaderBytes(
+    key: string,
+    options?: ReadHeaderBytesOptions,
+  ): Promise<Buffer>;
 }
 
 /**
@@ -138,6 +159,38 @@ export class S3StorageProvider implements StorageProvider {
       lastModified: response.LastModified ?? new Date(),
       eTag: (response.ETag as string | undefined)?.replace(/^"|"$/g, '') ?? '',
     };
+  }
+
+  async readHeaderBytes(
+    key: string,
+    options?: ReadHeaderBytesOptions,
+  ): Promise<Buffer> {
+    const byteCount = options?.byteCount ?? 8192;
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Range: `bytes=0-${byteCount - 1}`,
+    });
+
+    try {
+      const response = await this.client.send(command);
+      const chunks: Buffer[] = [];
+      if (response.Body) {
+        for await (const chunk of response.Body as any) {
+          chunks.push(Buffer.from(chunk));
+        }
+      }
+      return Buffer.concat(chunks);
+    } catch (err: any) {
+      // Translate AWS SDK errors to standardized codes
+      if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+        const storageError: any = new Error(`Storage key not found: ${key}`);
+        storageError.code = 'KEY_NOT_FOUND';
+        storageError.key = key;
+        throw storageError;
+      }
+      throw err;
+    }
   }
 }
 
@@ -219,6 +272,38 @@ export class R2StorageProvider implements StorageProvider {
       lastModified: response.LastModified ?? new Date(),
       eTag: (response.ETag as string | undefined)?.replace(/^"|"$/g, '') ?? '',
     };
+  }
+
+  async readHeaderBytes(
+    key: string,
+    options?: ReadHeaderBytesOptions,
+  ): Promise<Buffer> {
+    const byteCount = options?.byteCount ?? 8192;
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Range: `bytes=0-${byteCount - 1}`,
+    });
+
+    try {
+      const response = await this.client.send(command);
+      const chunks: Buffer[] = [];
+      if (response.Body) {
+        for await (const chunk of response.Body as any) {
+          chunks.push(Buffer.from(chunk));
+        }
+      }
+      return Buffer.concat(chunks);
+    } catch (err: any) {
+      // Translate AWS SDK / S3-compatible errors to standardized codes
+      if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+        const storageError: any = new Error(`Storage key not found: ${key}`);
+        storageError.code = 'KEY_NOT_FOUND';
+        storageError.key = key;
+        throw storageError;
+      }
+      throw err;
+    }
   }
 }
 

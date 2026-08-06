@@ -12,7 +12,7 @@
 
 import prisma from "@/lib/prisma";
 import { createStorageProvider } from "@/lib/storage/storage-provider";
-import { extractAudioMetadata, CorruptedAudioError } from "@/services/audioMetadata";
+import { extractAudioMetadata, CorruptedAudioError, KeyNotFoundError } from "@/services/audioMetadata";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -213,6 +213,10 @@ export async function createTrack(
       const error = new Error("Audio file is corrupted or unreadable.");
       (error as any).corruptedKey = audioStorageKey;
       throw error;
+    }
+    // Re-throw KeyNotFoundError so the route handler can return 404.
+    if (err instanceof KeyNotFoundError) {
+      throw err;
     }
     // For any other storage error, default duration to 0.0.
     // In a production system we might queue this for retry.

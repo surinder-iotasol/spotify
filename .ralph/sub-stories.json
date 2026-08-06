@@ -1,0 +1,3 @@
+[
+  {"id":"STORY-track-002bca","title":"Add missing data chunk and non-PCM WAV error tests","description":"Add two parseWavHeader tests: WAV file without a data chunk must throw, and WAV with non-PCM audio format must throw CorruptedAudioError.","acceptanceCriteria":["parseWavHeader throws when RIFF/WAVE has fmt chunk but no data chunk","parseWavHeader throws for non-PCM audio format values (e.g. format=3 WAV)","parseWavHeader throws for non-PCM format with different values (e.g. format=6)"],"priority":640,"effort":"low","passes":false,"dependsOn":["STORY-track-002bb"],"notes":"Both missing tests target src/lib/storage/audio-metadata.test.ts. Helper buildWavFile already supports changing audioFormat via raw buffer manipulation.","model":"sonnet"}
+]

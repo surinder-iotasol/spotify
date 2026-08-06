@@ -1,0 +1,55 @@
+[
+  {
+    "id": "STORY-track-005aa",
+    "title": "Create storage cleanup utility for orphaned files",
+    "description": "Build a new helper that invokes StorageProvider.deleteObject on audioStorageKey and coverImageStorageKey, tolerating missing keys.",
+    "acceptanceCriteria": [
+      "Helper accepts optional audioStorageKey and coverImageStorageKey parameters.",
+      "deleteObject is called for each non-null key.",
+      "Missing or null keys simply skip deleteObject without errors."
+    ],
+    "priority": 770,
+    "effort": "low",
+    "passes": false,
+    "dependsOn": [
+      "STORY-track-003",
+      "STORY-storage-001"
+    ],
+    "notes": "",
+    "model": "deepseek"
+  },
+  {
+    "id": "STORY-track-005ab",
+    "title": "Wire cleanup into POST /tracks registration",
+    "description": "Wrap the track registration endpoint so cleanup runs on any error after uploads succeed.",
+    "acceptanceCriteria": [
+      "Track registration calls cleanup utility when any post-upload error occurs.",
+      "Cleanup is invoked before the HTTP error response is returned."
+    ],
+    "priority": 771,
+    "effort": "low",
+    "passes": false,
+    "dependsOn": [
+      "STORY-track-005aa"
+    ],
+    "notes": "",
+    "model": "deepseek"
+  },
+  {
+    "id": "STORY-track-005ac",
+    "title": "Verify cleanup behavior with unit tests",
+    "description": "Add tests confirming the cleanup utility deletes keys and handles missing keys gracefully.",
+    "acceptanceCriteria": [
+      "Test verifies deleteObject is called for each uploaded key.",
+      "Test verifies no error when cleanup receives null keys."
+    ],
+    "priority": 772,
+    "effort": "low",
+    "passes": false,
+    "dependsOn": [
+      "STORY-track-005ab"
+    ],
+    "notes": "",
+    "model": "deepseek"
+  }
+]

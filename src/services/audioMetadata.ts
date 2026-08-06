@@ -74,6 +74,27 @@ export class CorruptedAudioError extends Error {
   }
 }
 
+/**
+ * Error thrown when a storage key is not found during audio metadata extraction.
+ *
+ * Carries a human-readable `message` describing the missing key
+ * and the storage `key` that could not be located.
+ */
+export class KeyNotFoundError extends Error {
+  /** Object storage key that was not found. */
+  public readonly key: string;
+
+  constructor(message: string, key: string) {
+    super(message);
+    this.name = "KeyNotFoundError";
+    this.key = key;
+
+    // Preserve the proper prototype chain (required when extending built-in
+    // classes across compilation targets).
+    Object.setPrototypeOf(this, KeyNotFoundError.prototype);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Service function                                                   */
 /* ------------------------------------------------------------------ */
@@ -98,9 +119,19 @@ export async function extractAudioMetadata(
 ): Promise<AudioMetadata> {
   // 1. Read initial header bytes (up to 8 KB is enough for every major
   //    audio container sync marker).
-  const header = await storage.readHeaderBytes(fileKey, {
-    byteCount: 8192,
-  });
+  let header: Buffer;
+  try {
+    header = await storage.readHeaderBytes(fileKey, {
+      byteCount: 8192,
+    });
+  } catch (err: any) {
+    // Translate storage-layer KEY_NOT_FOUND errors into KeyNotFoundError
+    // so route-level error handling can produce HTTP 404.
+    if (err && err.code === 'KEY_NOT_FOUND') {
+      throw new KeyNotFoundError(err.message, fileKey);
+    }
+    throw err;
+  }
 
   if (header.length === 0) {
     throw new CorruptedAudioError(
