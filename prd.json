@@ -1693,7 +1693,7 @@
       ],
       "priority": 820.4,
       "effort": "medium",
-      "passes": false,
+      "passes": true,
       "dependsOn": [
         "STORY-track-006c"
       ],
