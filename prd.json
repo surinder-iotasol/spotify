@@ -1714,15 +1714,85 @@
         "Integration tests in tests/api/track-update.test.ts call PATCH /api/v1/tracks/[id] with valid owner payload (asserts 200), immutable payload (asserts 422), unauthorized user (asserts 403), and non-existent track (asserts 404)."
       ],
       "priority": 830,
+      "passes": true,
+      "dependsOn": [
+        "STORY-setup-006",
+        "STORY-track-003",
+        "STORY-security-005"
+      ],
+      "notes": "auto-split into 4 sub-stories",
+      "effort": "medium",
+      "model": "deepseek"
+    },
+    {
+      "id": "STORY-track-007a",
+      "title": "Implement payload validation for track metadata",
+      "description": "Create validation functions for track metadata update fields. Validates title (1-100 chars, trimmed), coverImageUrl (HTTP/S URL format), and genre (allowed taxonomy). Rejects requests containing immutable fields such as audioUrl, duration, playCount, likeCount, artistProfileId.",
+      "acceptanceCriteria": [
+        "Payload validation accepts optional title (1-100 characters, trimmed) and returns validation errors with field, code, and message for invalid input.",
+        "Payload validation accepts optional coverImageUrl as valid HTTP/HTTPS URL and rejects invalid URLs or non-string types.",
+        "Payload validation accepts optional genre matching the allowed taxonomy and creates immutable field rejection for audioUrl, duration, playCount, likeCount, artistProfileId."
+      ],
+      "priority": 830.1,
+      "effort": "low",
       "passes": false,
       "dependsOn": [
         "STORY-setup-006",
         "STORY-track-003",
         "STORY-security-005"
       ],
-      "notes": "",
+      "notes": "Core service layer validation. Uses ALLOWED_GENRES and IMMUTABLE_FIELDS constants."
+    },
+    {
+      "id": "STORY-track-007b",
+      "title": "Add auth and ownership checks to PATCH route",
+      "description": "Implement session authentication, ArtistProfile role gate, and track ownership verification on the PATCH /api/v1/tracks/[id] route handler. Returns 401 for missing session, 403 for missing ArtistProfile, 403 for ownership mismatch (unless Admin).",
+      "acceptanceCriteria": [
+        "Route returns 401 UNAUTHENTICATED for requests without a valid session cookie or session token.",
+        "Route returns 403 ARTIST_PROFILE_REQUIRED for authenticated users without an ArtistProfile, unless the user has an Admin role.",
+        "Route returns 403 FORBIDDEN_OWNERSHIP_MISMATCH when a non-admin user attempts to edit another artist's track."
+      ],
+      "priority": 830.2,
       "effort": "medium",
-      "model": "deepseek"
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-007a"
+      ],
+      "notes": "Route handler file only. Delegates to service layer for immutable/payload validation and ownership check."
+    },
+    {
+      "id": "STORY-track-007c",
+      "title": "Implement cache revalidation for track metadata updates",
+      "description": "Orchestrate the database update workflow: mutate track record with updated title, coverImageUrl, genre, set updatedAt in UTC ISO-8601, trigger Tag-based Next.js cache revalidation, and emit immutable audit log entries for Admin-initiated edits.",
+      "acceptanceCriteria": [
+        "Valid metadata updates mutate the database record and set updatedAt in UTC ISO-8601 format before returning 200 OK with updated metadata.",
+        "Successful updates revalidate Next.js cache tags including track-[id], artist-catalog-[artistProfileId], and genre-feed-[genre] for stale content removal.",
+        "Admin-initiated metadata edits create an AuditLog entry capturing the admin user ID, track ID, and list of modified fields for compliance tracking."
+      ],
+      "priority": 830.3,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-007b"
+      ],
+      "notes": "Service layer orchestration. Combines handleTrackMetadataUpdate with revalidateTag and AuditLog creation."
+    },
+    {
+      "id": "STORY-track-007d",
+      "title": "Add integration tests for track update endpoint",
+      "description": "Write E2E integration tests for PATCH /api/v1/tracks/[id] covering the happy path, immutable field rejection, authorization failures, and resource-not-found scenarios using a clean test database.",
+      "acceptanceCriteria": [
+        "Calling PATCH with valid owner payload asserts 200 OK with the updated metadata fields in the response body.",
+        "Sending payload that includes immutable fields asserts 422 Unprocessable Entity with error code IMMUTABLE_FIELD_REJECTED.",
+        "Calling PATCH with unauthorized user asserts 403 Forbidden and with non-existent track ID asserts 404 Not Found."
+      ],
+      "priority": 830.4,
+      "effort": "medium",
+      "passes": false,
+      "dependsOn": [
+        "STORY-track-007c"
+      ],
+      "notes": "New integration test file at tests/api/track-update.test.ts. Uses in-memory or test database, not unit mocks."
     },
     {
       "id": "STORY-track-008",
